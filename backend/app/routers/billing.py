@@ -1,5 +1,5 @@
 from datetime import date
-from typing import Optional
+from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -278,3 +278,86 @@ def advance_subscription_cycle(subscription_id: int, db: Session = Depends(get_d
     db.refresh(billing_event)
 
     return SubscriptionWithEventResponse(subscription=subscription, billing_event=billing_event)
+
+
+# ---- Billing summary ----
+
+
+class OneTimeLineResponse(BaseModel):
+    quote_line_id: int
+    product_id: int
+    quantity: int
+    discount_pct: float
+    line_value: float
+
+
+class RecurringLineResponse(BaseModel):
+    quote_line_id: int
+    product_id: int
+    subscription_id: int
+    subscription_plan_id: int
+    quantity: int
+    status: str
+    current_cycle_start: date
+    current_cycle_end: date
+    billing_events: List[BillingEventResponse]
+
+
+class BillingSummaryResponse(BaseModel):
+    one_time_lines: List[OneTimeLineResponse]
+    recurring_lines: List[RecurringLineResponse]
+
+
+@router.get("/quotes/{quote_id}/billing-summary", response_model=BillingSummaryResponse)
+def get_billing_summary(quote_id: int, db: Session = Depends(get_db)):
+    quote = db.get(Quote, quote_id)
+    if quote is None:
+        raise HTTPException(status_code=404, detail="Quote not found")
+
+    lines = db.query(QuoteLine).filter(QuoteLine.quote_id == quote_id).all()
+
+    one_time_lines = [
+        OneTimeLineResponse(
+            quote_line_id=line.id,
+            product_id=line.product_id,
+            quantity=line.quantity,
+            discount_pct=line.discount_pct,
+            line_value=line.line_value,
+        )
+        for line in lines
+        if not line.is_recurring
+    ]
+
+    recurring_lines = []
+    for line in lines:
+        if not line.is_recurring:
+            continue
+
+        subscription = (
+            db.query(Subscription).filter(Subscription.quote_line_id == line.id).first()
+        )
+        if subscription is None:
+            continue
+
+        events = (
+            db.query(BillingEvent)
+            .filter(BillingEvent.subscription_id == subscription.id)
+            .order_by(BillingEvent.event_date)
+            .all()
+        )
+
+        recurring_lines.append(
+            RecurringLineResponse(
+                quote_line_id=line.id,
+                product_id=line.product_id,
+                subscription_id=subscription.id,
+                subscription_plan_id=subscription.subscription_plan_id,
+                quantity=subscription.quantity,
+                status=subscription.status.value,
+                current_cycle_start=subscription.current_cycle_start,
+                current_cycle_end=subscription.current_cycle_end,
+                billing_events=[BillingEventResponse.model_validate(e) for e in events],
+            )
+        )
+
+    return BillingSummaryResponse(one_time_lines=one_time_lines, recurring_lines=recurring_lines)
