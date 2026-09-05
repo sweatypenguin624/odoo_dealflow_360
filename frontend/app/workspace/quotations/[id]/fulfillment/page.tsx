@@ -5,6 +5,7 @@ import { use, useEffect, useMemo, useState } from "react";
 import {
   ApiError,
   confirmFulfillment,
+  generateQuoteInvoice,
   getFulfillment,
   getQuote,
   listWarehouses,
@@ -31,6 +32,9 @@ export default function FulfillmentPage({ params }: { params: Promise<{ id: stri
   );
   const [confirmError, setConfirmError] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
+  const [generatingInvoice, setGeneratingInvoice] = useState(false);
+  const [invoiceError, setInvoiceError] = useState<string | null>(null);
+  const [generatedInvoiceId, setGeneratedInvoiceId] = useState<number | null>(null);
   const [overrideError, setOverrideError] = useState<string | null>(null);
   const [savingOverride, setSavingOverride] = useState(false);
 
@@ -105,6 +109,19 @@ export default function FulfillmentPage({ params }: { params: Promise<{ id: stri
       setConfirmError(err instanceof ApiError ? err.message : "Failed to confirm fulfillment");
     } finally {
       setConfirming(false);
+    }
+  }
+
+  async function handleGenerateInvoice() {
+    setGeneratingInvoice(true);
+    setInvoiceError(null);
+    try {
+      const invoice = await generateQuoteInvoice(quoteId);
+      setGeneratedInvoiceId(invoice.id);
+    } catch (err) {
+      setInvoiceError(err instanceof ApiError ? err.message : "Failed to generate invoice");
+    } finally {
+      setGeneratingInvoice(false);
     }
   }
 
@@ -232,9 +249,27 @@ export default function FulfillmentPage({ params }: { params: Promise<{ id: stri
                 {confirming ? "Confirming…" : "Accept Suggested Split"}
               </button>
             )}
+            {plan?.status === "confirmed" && (
+              <button
+                onClick={handleGenerateInvoice}
+                disabled={generatingInvoice}
+                className="w-fit rounded bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
+              >
+                {generatingInvoice ? "Generating…" : "Generate Invoice"}
+              </button>
+            )}
             {plan && <StatusBadge status={plan.status} />}
           </div>
           {confirmError && <p className="text-sm text-red-600 dark:text-red-400">{confirmError}</p>}
+          {invoiceError && <p className="text-sm text-red-600 dark:text-red-400">{invoiceError}</p>}
+          {generatedInvoiceId !== null && (
+            <div className="rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-800 dark:border-green-900 dark:bg-green-950/40 dark:text-green-300">
+              Invoice created.{" "}
+              <Link href={`/workspace/invoices/${generatedInvoiceId}`} className="underline">
+                View invoice
+              </Link>
+            </div>
+          )}
 
           <div>
             <h2 className="mb-2 text-sm font-semibold text-zinc-900 dark:text-zinc-50">

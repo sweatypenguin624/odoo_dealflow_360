@@ -6,6 +6,7 @@ import {
   ApiError,
   cancelSubscription,
   changeSubscriptionQuantity,
+  generateRecurringInvoice,
   getBillingSummary,
   listProducts,
 } from "@/lib/api";
@@ -38,6 +39,7 @@ function RecurringLineCard({
   const [changeDate, setChangeDate] = useState(todayIsoDate);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [generatedInvoiceId, setGeneratedInvoiceId] = useState<number | null>(null);
 
   async function handleQuantityChange() {
     setBusy(true);
@@ -63,6 +65,19 @@ function RecurringLineCard({
       onChanged({ amount: result.billing_event.amount, description: result.billing_event.description });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Failed to cancel subscription");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleGenerateInvoice() {
+    setBusy(true);
+    setError(null);
+    try {
+      const invoice = await generateRecurringInvoice(line.subscription_id);
+      setGeneratedInvoiceId(invoice.id);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Failed to generate invoice");
     } finally {
       setBusy(false);
     }
@@ -142,9 +157,24 @@ function RecurringLineCard({
           >
             Cancel Subscription
           </button>
+          <button
+            onClick={handleGenerateInvoice}
+            disabled={busy}
+            className="rounded bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
+          >
+            Generate Invoice
+          </button>
         </div>
       )}
       {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
+      {generatedInvoiceId !== null && (
+        <p className="mt-2 text-sm text-green-700 dark:text-green-400">
+          Invoice created.{" "}
+          <Link href={`/workspace/invoices/${generatedInvoiceId}`} className="underline">
+            View invoice
+          </Link>
+        </p>
+      )}
     </div>
   );
 }
