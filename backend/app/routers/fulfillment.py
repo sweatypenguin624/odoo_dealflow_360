@@ -56,6 +56,13 @@ def create_warehouse(payload: WarehouseCreate, db: Session = Depends(get_db)):
     return warehouse
 
 
+@router.get("/warehouses", response_model=List[WarehouseResponse])
+def list_warehouses(db: Session = Depends(get_db)):
+    # Frontend gap-fill (Phase 8): FulfillmentSplit only ever carries a
+    # warehouse_id - this is what lets the UI resolve it to a name.
+    return db.query(Warehouse).all()
+
+
 class StockUpsert(BaseModel):
     product_id: int
     quantity_available: int

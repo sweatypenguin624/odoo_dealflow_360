@@ -154,3 +154,140 @@ def get_approval_history(quote_id: int, db: Session = Depends(get_db)):
         "approval_actions": approval_actions,
         "audit_logs": audit_logs
     }
+
+
+# ---- Frontend gap-fill (Phase 8): no earlier phase exposed a way to list
+# quotes, fetch one quote's full detail with product names, or edit an
+# existing line's quantity/discount - the workspace UI can't function
+# without these, so they're added here as plain, additive read/write
+# endpoints rather than worked around client-side. ----
+
+
+class QuoteListItemResponse(BaseModel):
+    id: int
+    customer_id: int
+    customer_name: str
+    status: str
+    required_approval_level: Optional[str]
+    current_approval_step: Optional[str]
+    created_at: Optional[str]
+
+    class Config:
+        from_attributes = True
+
+
+class QuoteLineDetailResponse(BaseModel):
+    id: int
+    product_id: int
+    product_name: str
+    quantity: int
+    discount_pct: float
+    line_value: float
+    is_recurring: bool
+
+
+class QuoteDetailResponse(BaseModel):
+    id: int
+    customer_id: int
+    customer_name: str
+    status: str
+    required_approval_level: Optional[str]
+    current_approval_step: Optional[str]
+    risk_reasons: Optional[List[str]]
+    created_at: Optional[str]
+    lines: List[QuoteLineDetailResponse]
+
+
+def _quote_list_item(quote: Quote) -> QuoteListItemResponse:
+    return QuoteListItemResponse(
+        id=quote.id,
+        customer_id=quote.customer_id,
+        customer_name=quote.customer.name,
+        status=quote.status.value,
+        required_approval_level=quote.required_approval_level,
+        current_approval_step=quote.current_approval_step,
+        created_at=quote.created_at.isoformat() if quote.created_at else None,
+    )
+
+
+@router.get("", response_model=List[QuoteListItemResponse])
+def list_quotes(db: Session = Depends(get_db)):
+    quotes = db.query(Quote).order_by(Quote.id.desc()).all()
+    return [_quote_list_item(quote) for quote in quotes]
+
+
+@router.get("/{quote_id}", response_model=QuoteDetailResponse)
+def get_quote_detail(quote_id: int, db: Session = Depends(get_db)):
+    quote = db.get(Quote, quote_id)
+    if quote is None:
+        raise HTTPException(status_code=404, detail="Quote not found")
+
+    lines = (
+        db.query(QuoteLine, Product)
+        .join(Product, QuoteLine.product_id == Product.id)
+        .filter(QuoteLine.quote_id == quote_id)
+        .all()
+    )
+
+    return QuoteDetailResponse(
+        id=quote.id,
+        customer_id=quote.customer_id,
+        customer_name=quote.customer.name,
+        status=quote.status.value,
+        required_approval_level=quote.required_approval_level,
+        current_approval_step=quote.current_approval_step,
+        risk_reasons=quote.risk_reasons,
+        created_at=quote.created_at.isoformat() if quote.created_at else None,
+        lines=[
+            QuoteLineDetailResponse(
+                id=quote_line.id,
+                product_id=quote_line.product_id,
+                product_name=product.name,
+                quantity=quote_line.quantity,
+                discount_pct=quote_line.discount_pct,
+                line_value=quote_line.line_value,
+                is_recurring=quote_line.is_recurring,
+            )
+            for quote_line, product in lines
+        ],
+    )
+
+
+class LineUpdateRequest(BaseModel):
+    quantity: Optional[int] = None
+    discount_pct: Optional[float] = None
+
+
+@router.patch("/{quote_id}/lines/{line_id}", response_model=QuoteLineDetailResponse)
+def update_quote_line(
+    quote_id: int, line_id: int, payload: LineUpdateRequest, db: Session = Depends(get_db)
+):
+    line = (
+        db.query(QuoteLine).filter(QuoteLine.id == line_id, QuoteLine.quote_id == quote_id).first()
+    )
+    if line is None:
+        raise HTTPException(status_code=404, detail="Quote line not found on this quote")
+
+    product = db.get(Product, line.product_id)
+
+    if payload.quantity is not None:
+        line.quantity = payload.quantity
+    if payload.discount_pct is not None:
+        line.discount_pct = payload.discount_pct
+
+    # line_value is consistently price * quantity (pre-discount) elsewhere
+    # in this codebase (see upsell.add_suggestion) - kept consistent here.
+    line.line_value = product.price * line.quantity
+
+    db.commit()
+    db.refresh(line)
+
+    return QuoteLineDetailResponse(
+        id=line.id,
+        product_id=line.product_id,
+        product_name=product.name,
+        quantity=line.quantity,
+        discount_pct=line.discount_pct,
+        line_value=line.line_value,
+        is_recurring=line.is_recurring,
+    )
