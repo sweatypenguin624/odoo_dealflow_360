@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { ApiError, getPendingApproval } from "@/lib/api";
 import type { ApprovalStep, QuoteListItem } from "@/lib/api";
 import { useReload } from "@/lib/reload-context";
@@ -32,6 +32,14 @@ function FilterLink({
 }
 
 export default function ApprovalsPage() {
+  return (
+    <Suspense fallback={<p className="text-zinc-500 dark:text-zinc-400">Loading…</p>}>
+      <ApprovalsPageInner />
+    </Suspense>
+  );
+}
+
+function ApprovalsPageInner() {
   const searchParams = useSearchParams();
   const stepFilter = (searchParams.get("step") as ApprovalStep | null) ?? undefined;
   const { reloadNonce } = useReload();

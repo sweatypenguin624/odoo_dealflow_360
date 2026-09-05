@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { getMarginSummary, listQuotes } from "@/lib/api";
 import type { QuoteListItem, QuoteStatus } from "@/lib/api";
 import { useReload } from "@/lib/reload-context";
@@ -46,6 +46,14 @@ function QuoteCard({ quote }: { quote: QuoteWithAmount }) {
 }
 
 export default function QuotationsPage() {
+  return (
+    <Suspense fallback={<p className="text-zinc-500 dark:text-zinc-400">Loading…</p>}>
+      <QuotationsPageInner />
+    </Suspense>
+  );
+}
+
+function QuotationsPageInner() {
   const searchParams = useSearchParams();
   const isPipelineView = searchParams.get("view") === "pipeline";
   const { reloadNonce } = useReload();
