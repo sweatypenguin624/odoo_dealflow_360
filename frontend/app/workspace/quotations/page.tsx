@@ -98,10 +98,38 @@ function QuotationsPageInner() {
     return <p className="text-zinc-500 dark:text-zinc-400">Loading quotes…</p>;
   }
 
+  const viewToggle = (
+    <div className="flex gap-3 text-sm">
+      <Link
+        href="/workspace/quotations"
+        className={
+          !isPipelineView
+            ? "font-semibold text-blue-600 dark:text-blue-400"
+            : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+        }
+      >
+        List
+      </Link>
+      <Link
+        href="/workspace/quotations?view=pipeline"
+        className={
+          isPipelineView
+            ? "font-semibold text-blue-600 dark:text-blue-400"
+            : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+        }
+      >
+        Pipeline
+      </Link>
+    </div>
+  );
+
   if (!isPipelineView) {
     return (
       <div>
-        <h1 className="mb-4 text-xl font-semibold text-zinc-900 dark:text-zinc-50">Quotations</h1>
+        <div className="mb-4 flex items-center justify-between">
+          <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50">Quotations</h1>
+          {viewToggle}
+        </div>
         {quotes.length === 0 ? (
           <p className="text-zinc-500 dark:text-zinc-400">No quotes yet.</p>
         ) : (
@@ -117,7 +145,10 @@ function QuotationsPageInner() {
 
   return (
     <div>
-      <h1 className="mb-4 text-xl font-semibold text-zinc-900 dark:text-zinc-50">Pipeline</h1>
+      <div className="mb-4 flex items-center justify-between">
+        <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50">Pipeline</h1>
+        {viewToggle}
+      </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
         {PIPELINE_COLUMNS.map((status) => {
           const columnQuotes = quotes.filter((q) => q.status === status);
