@@ -8,6 +8,8 @@ from app.models.fulfillment import FulfillmentPlan, FulfillmentSplit, Fulfillmen
 from app.models.upsell import ProductPairing
 from app.models.subscription_plan import SubscriptionPlan, BillingInterval
 from app.models.subscription import Subscription, BillingEvent, SubscriptionStatus, BillingEventType
+from app.models.portal_access import PortalToken
+from app.models.negotiation import LineComment, CounterProposal
 
 __all__ = [
     "Customer",
@@ -31,4 +33,7 @@ __all__ = [
     "BillingEvent",
     "SubscriptionStatus",
     "BillingEventType",
+    "PortalToken",
+    "LineComment",
+    "CounterProposal",
 ]
