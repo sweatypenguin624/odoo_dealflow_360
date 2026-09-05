@@ -13,6 +13,7 @@ import {
 import type { MarginSummary, ProductRef, QuoteDetail, QuoteRiskResult } from "@/lib/api";
 import { useReload } from "@/lib/reload-context";
 import { StatusBadge } from "@/components/StatusBadge";
+import { UpsellPanel } from "@/components/UpsellPanel";
 
 const DEBOUNCE_MS = 500;
 
@@ -227,87 +228,97 @@ export default function QuotationBuilderPage({ params }: { params: Promise<{ id:
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
-        <table className="w-full min-w-[640px] text-sm">
-          <thead className="bg-zinc-50 text-left text-xs uppercase text-zinc-500 dark:bg-zinc-900 dark:text-zinc-400">
-            <tr>
-              <th className="px-4 py-2">Product</th>
-              <th className="px-4 py-2">Quantity</th>
-              <th className="px-4 py-2">Discount %</th>
-              <th className="px-4 py-2">Line Total</th>
-              <th className="px-4 py-2"></th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-            {quote.lines.map((line) => {
-              const product = productById.get(line.product_id);
-              const price = product?.price ?? 0;
-              const lineTotal = price * line.quantity * (1 - line.discount_pct / 100);
-              const isSaving = savingLineIds.has(line.id);
-
-              return (
-                <tr key={line.id} className="bg-white dark:bg-zinc-950">
-                  <td className="px-4 py-2">
-                    {line.product_name}
-                    {line.is_recurring && (
-                      <span className="ml-2 rounded bg-purple-100 px-1.5 py-0.5 text-xs text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">
-                        Recurring
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-2">
-                    <input
-                      type="number"
-                      min={1}
-                      value={line.quantity}
-                      onChange={(e) => {
-                        const quantity = Number(e.target.value);
-                        updateLocalLine(line.id, { quantity });
-                        scheduleSave(line.id, { quantity });
-                      }}
-                      onBlur={(e) => flushSave(line.id, { quantity: Number(e.target.value) })}
-                      className="w-20 rounded border border-zinc-300 px-2 py-1 dark:border-zinc-700 dark:bg-zinc-900"
-                    />
-                  </td>
-                  <td className="px-4 py-2">
-                    <input
-                      type="number"
-                      min={0}
-                      max={100}
-                      step={0.5}
-                      value={line.discount_pct}
-                      onChange={(e) => {
-                        const discount_pct = Number(e.target.value);
-                        updateLocalLine(line.id, { discount_pct });
-                        scheduleSave(line.id, { discount_pct });
-                      }}
-                      onBlur={(e) => flushSave(line.id, { discount_pct: Number(e.target.value) })}
-                      className="w-20 rounded border border-zinc-300 px-2 py-1 dark:border-zinc-700 dark:bg-zinc-900"
-                    />
-                  </td>
-                  <td className="px-4 py-2 font-medium">{formatCurrency(lineTotal)}</td>
-                  <td className="px-4 py-2 text-xs text-zinc-400">
-                    {isSaving ? "Saving…" : ""}
-                  </td>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[2fr_1fr]">
+        <div className="flex flex-col gap-6">
+          <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
+            <table className="w-full min-w-[640px] text-sm">
+              <thead className="bg-zinc-50 text-left text-xs uppercase text-zinc-500 dark:bg-zinc-900 dark:text-zinc-400">
+                <tr>
+                  <th className="px-4 py-2">Product</th>
+                  <th className="px-4 py-2">Quantity</th>
+                  <th className="px-4 py-2">Discount %</th>
+                  <th className="px-4 py-2">Line Total</th>
+                  <th className="px-4 py-2"></th>
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+              </thead>
+              <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                {quote.lines.map((line) => {
+                  const product = productById.get(line.product_id);
+                  const price = product?.price ?? 0;
+                  const lineTotal = price * line.quantity * (1 - line.discount_pct / 100);
+                  const isSaving = savingLineIds.has(line.id);
 
-      <div className="flex flex-col gap-3">
-        {quote.status === "draft" && (
-          <button
-            onClick={handleSubmitForApproval}
-            disabled={submitting}
-            className="w-fit rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-          >
-            {submitting ? "Submitting…" : "Submit for Approval"}
-          </button>
-        )}
-        {submitError && <p className="text-sm text-red-600 dark:text-red-400">{submitError}</p>}
-        {submitResult && <RiskResultPanel result={submitResult} />}
+                  return (
+                    <tr key={line.id} className="bg-white dark:bg-zinc-950">
+                      <td className="px-4 py-2">
+                        {line.product_name}
+                        {line.is_recurring && (
+                          <span className="ml-2 rounded bg-purple-100 px-1.5 py-0.5 text-xs text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">
+                            Recurring
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-2">
+                        <input
+                          type="number"
+                          min={1}
+                          value={line.quantity}
+                          onChange={(e) => {
+                            const quantity = Number(e.target.value);
+                            updateLocalLine(line.id, { quantity });
+                            scheduleSave(line.id, { quantity });
+                          }}
+                          onBlur={(e) => flushSave(line.id, { quantity: Number(e.target.value) })}
+                          className="w-20 rounded border border-zinc-300 px-2 py-1 dark:border-zinc-700 dark:bg-zinc-900"
+                        />
+                      </td>
+                      <td className="px-4 py-2">
+                        <input
+                          type="number"
+                          min={0}
+                          max={100}
+                          step={0.5}
+                          value={line.discount_pct}
+                          onChange={(e) => {
+                            const discount_pct = Number(e.target.value);
+                            updateLocalLine(line.id, { discount_pct });
+                            scheduleSave(line.id, { discount_pct });
+                          }}
+                          onBlur={(e) => flushSave(line.id, { discount_pct: Number(e.target.value) })}
+                          className="w-20 rounded border border-zinc-300 px-2 py-1 dark:border-zinc-700 dark:bg-zinc-900"
+                        />
+                      </td>
+                      <td className="px-4 py-2 font-medium">{formatCurrency(lineTotal)}</td>
+                      <td className="px-4 py-2 text-xs text-zinc-400">
+                        {isSaving ? "Saving…" : ""}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="flex flex-col gap-3">
+            {quote.status === "draft" && (
+              <button
+                onClick={handleSubmitForApproval}
+                disabled={submitting}
+                className="w-fit rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+              >
+                {submitting ? "Submitting…" : "Submit for Approval"}
+              </button>
+            )}
+            {submitError && <p className="text-sm text-red-600 dark:text-red-400">{submitError}</p>}
+            {submitResult && <RiskResultPanel result={submitResult} />}
+          </div>
+        </div>
+
+        <UpsellPanel
+          quoteId={quoteId}
+          anchorLineId={quote.lines[0]?.id ?? null}
+          onAdded={reloadQuoteAndMargin}
+        />
       </div>
     </div>
   );
