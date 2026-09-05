@@ -3,12 +3,28 @@
 import { use, useCallback, useEffect, useMemo, useState } from "react";
 import {
   ApiError,
+  confirmPortalQuote,
   getPortalQuote,
   listPortalProducts,
   submitCounterProposal,
   submitPortalComment,
 } from "@/lib/portalApi";
 import type { PortalProductRef, PortalQuote, PortalQuoteLine } from "@/lib/portalApi";
+
+// GET /portal/quote fails with 401 for a bad/expired token and 403 for a
+// quote that isn't visible yet (still in draft). Neither case should ever
+// mention tokens, status codes, or internal terms to a customer.
+function loadErrorMessage(err: unknown): string {
+  if (err instanceof ApiError) {
+    if (err.status === 401) {
+      return "This link has expired or is no longer valid. Please contact your sales representative for a new one.";
+    }
+    if (err.status === 403) {
+      return "This quotation isn't ready to view yet. Please check back soon, or contact your sales representative.";
+    }
+  }
+  return "We couldn't load your quotation. Please try again shortly.";
+}
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amount);
@@ -129,7 +145,7 @@ export default function CustomerPortalPage({ params }: { params: Promise<{ token
         }
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof ApiError ? err.message : "We couldn't load your quotation.");
+          setError(loadErrorMessage(err));
         }
       }
     }
@@ -139,6 +155,24 @@ export default function CustomerPortalPage({ params }: { params: Promise<{ token
       cancelled = true;
     };
   }, [token]);
+
+  const [confirmSubmitting, setConfirmSubmitting] = useState(false);
+  const [confirmError, setConfirmError] = useState<string | null>(null);
+
+  async function handleConfirm() {
+    setConfirmSubmitting(true);
+    setConfirmError(null);
+    try {
+      await confirmPortalQuote(token);
+      await refetch();
+    } catch {
+      setConfirmError(
+        "We couldn't confirm this quotation right now — please try again or contact your sales representative.",
+      );
+    } finally {
+      setConfirmSubmitting(false);
+    }
+  }
 
   const proposedEntries = Object.entries(draftDiscounts).filter(([, value]) => value.trim() !== "");
 
@@ -177,7 +211,11 @@ export default function CustomerPortalPage({ params }: { params: Promise<{ token
   }
 
   if (error) {
-    return <p className="text-red-600 dark:text-red-400">{error}</p>;
+    return (
+      <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-6 text-center dark:border-zinc-800 dark:bg-zinc-900">
+        <p className="text-zinc-700 dark:text-zinc-300">{error}</p>
+      </div>
+    );
   }
 
   if (quote === null) {
@@ -193,6 +231,43 @@ export default function CustomerPortalPage({ params }: { params: Promise<{ token
         <span className="inline-block rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-800 dark:bg-blue-900/40 dark:text-blue-300">
           {quote.status}
         </span>
+      </div>
+
+      <div className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+        {quote.status === "Sent" && (
+          <>
+            <p className="mb-3 text-sm text-zinc-600 dark:text-zinc-400">
+              This quotation is ready for you to confirm.
+            </p>
+            <button
+              onClick={handleConfirm}
+              disabled={confirmSubmitting}
+              className="rounded bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
+            >
+              {confirmSubmitting ? "Confirming…" : "Confirm Quotation"}
+            </button>
+            {confirmError && (
+              <p className="mt-2 text-sm text-red-600 dark:text-red-400">{confirmError}</p>
+            )}
+          </>
+        )}
+        {quote.status === "Under Negotiation" && (
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            Awaiting internal approval — you&apos;ll be able to confirm this quotation once
+            that&apos;s complete.
+          </p>
+        )}
+        {quote.status === "Confirmed" && (
+          <p className="text-sm text-green-700 dark:text-green-400">
+            You&apos;ve confirmed this quotation. Thank you!
+          </p>
+        )}
+        {quote.status === "Rejected" && (
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            This quotation is no longer available for confirmation. Please contact your sales
+            representative.
+          </p>
+        )}
       </div>
 
       {proposalBanner && (

@@ -105,3 +105,13 @@ export const submitCounterProposal = (token: string, proposedLines: ProposedLine
     body: { proposed_lines: proposedLines },
     headers: withToken(token),
   });
+
+// ---- POST /portal/confirm ----
+
+export interface PortalConfirmResult {
+  quote_id: number;
+  status: string;
+}
+
+export const confirmPortalQuote = (token: string) =>
+  apiFetch<PortalConfirmResult>("/portal/confirm", { method: "POST", headers: withToken(token) });
