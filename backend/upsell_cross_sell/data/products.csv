@@ -1,0 +1,344 @@
+product_id,product_name,category,subcategory,brand,cost_price,selling_price,margin,quality_score,performance_score,ram_gb,storage_gb,processor_tier,warranty_months,active,stock_quantity
+1,Laptop Entry-Level Lenovo,Laptops,Entry-Level,HP,28168.89,37751.52,9582.63,25,38,12.0,256.0,i3,36,True,318
+2,Laptop Entry-Level Dell,Laptops,Entry-Level,Lenovo,29729.19,47486.64,17757.45,74,75,8.0,256.0,Ryzen 5,24,True,68
+3,Laptop Entry-Level Dell,Laptops,Entry-Level,Dell,24598.75,35699.98,11101.24,20,20,12.0,256.0,Ryzen 5,12,True,176
+4,Laptop Entry-Level Lenovo,Laptops,Entry-Level,Lenovo,21119.38,49133.03,28013.64,63,100,12.0,256.0,Ryzen 5,36,True,215
+5,Laptop Entry-Level HP,Laptops,Entry-Level,HP,24519.55,37733.54,13214.0,20,41,12.0,512.0,Ryzen 5,24,True,455
+6,Laptop Entry-Level Dell,Laptops,Entry-Level,HP,29339.93,45909.08,16569.15,83,45,12.0,256.0,Ryzen 5,12,True,226
+7,Laptop Entry-Level Lenovo,Laptops,Entry-Level,Lenovo,23528.41,43140.44,19612.03,59,48,8.0,256.0,i3,12,True,90
+8,Laptop Entry-Level Dell,Laptops,Entry-Level,Lenovo,27402.08,46852.63,19450.56,89,81,12.0,256.0,Ryzen 5,36,True,416
+9,Laptop Entry-Level Dell,Laptops,Entry-Level,HP,27019.57,44988.84,17969.26,42,76,8.0,256.0,i3,12,True,264
+10,Laptop Entry-Level Dell,Laptops,Entry-Level,HP,23304.61,35606.5,12301.89,20,20,12.0,256.0,i3,36,True,494
+11,Laptop Entry-Level Dell,Laptops,Entry-Level,HP,23243.63,41155.74,17912.11,29,52,12.0,256.0,i3,36,True,450
+12,Laptop Entry-Level HP,Laptops,Entry-Level,Dell,21949.45,41848.02,19898.57,39,24,12.0,256.0,Ryzen 5,24,True,394
+13,Laptop Entry-Level Lenovo,Laptops,Entry-Level,HP,23051.42,41406.62,18355.2,47,46,8.0,512.0,Ryzen 5,36,True,181
+14,Laptop Entry-Level Lenovo,Laptops,Entry-Level,HP,23197.13,37524.37,14327.24,21,20,12.0,256.0,Ryzen 5,12,True,396
+15,Laptop Professional Dell,Laptops,Professional,HP,32221.3,74943.51,42722.21,93,98,16.0,512.0,Ryzen 7,12,True,169
+16,Laptop Professional HP,Laptops,Professional,HP,38293.4,64817.42,26524.02,56,48,16.0,512.0,i5,36,True,479
+17,Laptop Professional Lenovo,Laptops,Professional,HP,38036.62,52257.24,14220.62,20,22,16.0,512.0,Ryzen 7,12,True,460
+18,Laptop Professional HP,Laptops,Professional,Lenovo,42142.52,58716.65,16574.13,41,20,16.0,512.0,Ryzen 7,12,True,424
+19,Laptop Professional Dell,Laptops,Professional,Dell,43160.09,56448.54,13288.45,41,33,16.0,512.0,i5,12,True,169
+20,Laptop Professional Lenovo,Laptops,Professional,Dell,39496.52,58475.74,18979.22,53,20,16.0,512.0,i5,24,True,465
+21,Laptop Professional HP,Laptops,Professional,HP,41780.11,66724.71,24944.6,39,84,16.0,512.0,i5,36,True,203
+22,Laptop Professional Lenovo,Laptops,Professional,Lenovo,40378.43,66299.03,25920.6,76,50,16.0,512.0,i5,24,True,410
+23,Laptop Premium Lenovo,Laptops,Premium,Lenovo,60344.33,79215.36,18871.03,20,20,32.0,1024.0,M1,24,True,235
+24,Laptop Premium MacBook,Laptops,Premium,Dell,54452.12,104029.65,49577.53,77,70,32.0,512.0,M1,36,True,486
+25,Laptop Premium Lenovo,Laptops,Premium,MacBook,52548.13,114757.23,62209.1,97,59,16.0,512.0,M1,12,True,265
+26,Laptop Premium Dell,Laptops,Premium,Lenovo,58102.56,91770.91,33668.35,53,32,16.0,1024.0,M1,24,True,164
+27,Laptop Premium Dell,Laptops,Premium,Lenovo,52972.85,89514.78,36541.94,39,58,32.0,512.0,M1,36,True,322
+28,Laptop Premium Lenovo,Laptops,Premium,Lenovo,61953.15,83742.33,21789.18,20,20,32.0,1024.0,i7,36,True,351
+29,Laptop Premium MacBook,Laptops,Premium,MacBook,53860.12,81976.87,28116.75,20,24,32.0,1024.0,i7,24,True,112
+30,Laptop Premium Lenovo,Laptops,Premium,MacBook,47304.38,77325.68,30021.3,41,32,16.0,1024.0,M1,12,True,129
+31,Laptop Premium MacBook,Laptops,Premium,MacBook,52312.47,94753.71,42441.24,32,68,32.0,1024.0,i7,36,True,382
+32,Laptop Premium MacBook,Laptops,Premium,MacBook,62233.31,98251.33,36018.03,39,80,16.0,512.0,i7,24,True,471
+33,Laptop Premium Dell,Laptops,Premium,MacBook,47478.57,79237.06,31758.49,20,20,32.0,512.0,M1,24,True,109
+34,Laptop Premium Lenovo,Laptops,Premium,Dell,46223.21,91857.57,45634.36,38,72,16.0,1024.0,i7,12,True,485
+35,Laptop Premium Lenovo,Laptops,Premium,MacBook,60815.94,117310.36,56494.42,65,100,32.0,512.0,i7,12,True,426
+36,Laptop Premium Dell,Laptops,Premium,MacBook,62590.09,84300.8,21710.71,20,20,32.0,1024.0,i7,36,True,419
+37,Laptop Premium MacBook,Laptops,Premium,MacBook,63403.57,90328.11,26924.54,33,20,32.0,512.0,M1,12,True,258
+38,Smartphone Budget Xiaomi,Smartphones,Budget,Poco,8584.03,21757.99,13173.96,48,56,4.0,128.0,,18,True,22
+39,Smartphone Budget Xiaomi,Smartphones,Budget,Xiaomi,12971.29,15097.07,2125.78,33,20,6.0,128.0,,18,True,242
+40,Smartphone Budget Poco,Smartphones,Budget,Xiaomi,13807.72,16613.77,2806.05,37,39,6.0,64.0,,12,True,445
+41,Smartphone Budget Realme,Smartphones,Budget,Xiaomi,12445.64,21780.87,9335.22,84,84,4.0,64.0,,18,True,172
+42,Smartphone Budget Xiaomi,Smartphones,Budget,Realme,14124.09,16561.9,2437.8,44,55,4.0,128.0,,18,True,292
+43,Smartphone Budget Realme,Smartphones,Budget,Poco,12708.69,13057.53,348.84,20,20,6.0,64.0,,12,True,284
+44,Smartphone Budget Realme,Smartphones,Budget,Realme,13261.75,19259.26,5997.51,68,53,4.0,128.0,,12,True,157
+45,Smartphone Budget Xiaomi,Smartphones,Budget,Xiaomi,8126.78,13527.84,5401.06,30,23,4.0,128.0,,12,True,431
+46,Smartphone Budget Poco,Smartphones,Budget,Poco,10603.42,22427.42,11824.0,80,86,4.0,64.0,,12,True,29
+47,Smartphone Budget Xiaomi,Smartphones,Budget,Poco,7788.39,14160.8,6372.41,20,20,4.0,64.0,,18,True,21
+48,Smartphone Budget Xiaomi,Smartphones,Budget,Xiaomi,14677.88,17128.78,2450.9,34,28,6.0,128.0,,18,True,237
+49,Smartphone Mid-Range OnePlus,Smartphones,Mid-Range,OnePlus,21798.61,25807.9,4009.29,20,20,6.0,256.0,,12,True,380
+50,Smartphone Mid-Range OnePlus,Smartphones,Mid-Range,Samsung,25885.79,40335.38,14449.59,71,59,8.0,128.0,,12,True,155
+51,Smartphone Mid-Range Xiaomi,Smartphones,Mid-Range,Samsung,29809.14,39853.27,10044.13,64,58,6.0,128.0,,12,True,414
+52,Smartphone Mid-Range Samsung,Smartphones,Mid-Range,OnePlus,15845.63,46618.06,30772.43,86,87,6.0,128.0,,18,True,466
+53,Smartphone Mid-Range OnePlus,Smartphones,Mid-Range,OnePlus,16937.39,48851.28,31913.88,74,100,6.0,256.0,,18,True,171
+54,Smartphone Mid-Range Xiaomi,Smartphones,Mid-Range,Xiaomi,22143.16,45784.29,23641.13,97,74,8.0,128.0,,18,True,416
+55,Smartphone Mid-Range OnePlus,Smartphones,Mid-Range,Xiaomi,26327.06,40507.74,14180.68,47,72,8.0,256.0,,18,True,356
+56,Smartphone Mid-Range Samsung,Smartphones,Mid-Range,Samsung,16365.03,43159.93,26794.89,42,100,6.0,256.0,,12,True,397
+57,Smartphone Mid-Range Xiaomi,Smartphones,Mid-Range,Xiaomi,21890.2,46052.29,24162.08,86,76,8.0,128.0,,12,True,258
+58,Smartphone Mid-Range Samsung,Smartphones,Mid-Range,OnePlus,21901.79,39619.15,17717.37,82,46,8.0,256.0,,12,True,70
+59,Smartphone Mid-Range OnePlus,Smartphones,Mid-Range,OnePlus,17884.34,26021.72,8137.38,20,20,6.0,256.0,,18,True,43
+60,Smartphone Mid-Range Xiaomi,Smartphones,Mid-Range,Samsung,16931.23,33252.49,16321.26,23,28,6.0,128.0,,12,True,346
+61,Smartphone Mid-Range Xiaomi,Smartphones,Mid-Range,OnePlus,19153.16,45155.03,26001.87,69,89,6.0,128.0,,18,True,225
+62,Smartphone Mid-Range Xiaomi,Smartphones,Mid-Range,Xiaomi,25807.74,26558.53,750.79,20,20,6.0,128.0,,18,True,201
+63,Smartphone Mid-Range OnePlus,Smartphones,Mid-Range,Xiaomi,19038.65,34432.1,15393.46,28,21,8.0,128.0,,12,True,242
+64,Smartphone Premium Samsung,Smartphones,Premium,Samsung,44387.46,79209.97,34822.51,64,83,12.0,256.0,,18,True,452
+65,Smartphone Premium Samsung,Smartphones,Premium,OnePlus,40682.9,99325.76,58642.86,77,100,12.0,256.0,,18,True,455
+66,Smartphone Premium OnePlus,Smartphones,Premium,OnePlus,38552.86,58668.68,20115.82,20,27,12.0,512.0,,18,True,143
+67,Smartphone Premium iPhone,Smartphones,Premium,Samsung,59252.01,74537.44,15285.42,61,57,12.0,256.0,,18,True,419
+68,Smartphone Premium Samsung,Smartphones,Premium,OnePlus,39710.38,71271.82,31561.44,20,43,8.0,256.0,,18,True,365
+69,Smartphone Premium Samsung,Smartphones,Premium,iPhone,39619.27,79694.15,40074.89,48,27,8.0,256.0,,18,True,328
+70,Smartphone Premium Samsung,Smartphones,Premium,Samsung,50445.08,88011.39,37566.31,65,100,8.0,256.0,,12,True,382
+71,Smartphone Premium Samsung,Smartphones,Premium,OnePlus,51926.02,96917.02,44991.0,100,100,12.0,256.0,,12,True,222
+72,Smartphone Premium OnePlus,Smartphones,Premium,Samsung,35592.15,61784.59,26192.44,34,27,8.0,256.0,,12,True,297
+73,Smartphone Premium iPhone,Smartphones,Premium,OnePlus,43880.39,65068.89,21188.5,30,55,8.0,256.0,,12,True,48
+74,Smartphone Premium Samsung,Smartphones,Premium,OnePlus,33506.94,96991.61,63484.66,71,100,12.0,512.0,,12,True,420
+75,Smartphone Premium iPhone,Smartphones,Premium,OnePlus,53657.92,57583.74,3925.83,20,20,8.0,256.0,,18,True,339
+76,Tablet Standard iPad,Tablets,Standard,Samsung,13234.99,30729.63,17494.63,41,20,6.0,128.0,,24,True,341
+77,Tablet Standard Samsung,Tablets,Standard,Samsung,21262.58,31968.85,10706.27,85,67,4.0,64.0,,24,True,32
+78,Tablet Standard iPad,Tablets,Standard,Samsung,17544.07,38945.67,21401.6,98,77,6.0,128.0,,12,True,365
+79,Tablet Standard Samsung,Tablets,Standard,iPad,23025.01,35801.69,12776.69,69,98,4.0,128.0,,24,True,416
+80,Tablet Standard Samsung,Tablets,Standard,iPad,13473.73,24718.12,11244.39,20,20,4.0,64.0,,24,True,158
+81,Tablet Standard iPad,Tablets,Standard,Samsung,16551.67,34884.99,18333.32,83,64,6.0,64.0,,24,True,395
+82,Tablet Standard iPad,Tablets,Standard,Samsung,17588.4,29616.74,12028.34,50,59,4.0,128.0,,24,True,207
+83,Tablet Standard Samsung,Tablets,Standard,iPad,12406.55,26229.46,13822.91,20,44,6.0,128.0,,12,True,186
+84,Tablet Pro Samsung,Tablets,Pro,iPad,33950.98,43413.99,9463.01,20,20,6.0,256.0,,12,True,327
+85,Tablet Pro Samsung,Tablets,Pro,Samsung,28923.35,47627.51,18704.16,20,20,8.0,128.0,,24,True,485
+86,Tablet Pro Samsung,Tablets,Pro,iPad,35546.11,59880.48,24334.37,44,53,8.0,128.0,,12,True,375
+87,Tablet Pro iPad,Tablets,Pro,Samsung,36637.88,72029.99,35392.11,76,95,6.0,128.0,,12,True,63
+88,Tablet Pro Samsung,Tablets,Pro,Samsung,32142.51,62777.74,30635.23,59,71,8.0,256.0,,24,True,409
+89,Tablet Pro iPad,Tablets,Pro,iPad,33532.4,66723.41,33191.0,56,52,8.0,256.0,,12,True,121
+90,Tablet Pro iPad,Tablets,Pro,iPad,28354.45,63321.66,34967.21,72,55,6.0,128.0,,12,True,405
+91,Tablet Pro Samsung,Tablets,Pro,iPad,43935.71,53807.69,9871.98,25,53,6.0,256.0,,24,True,211
+92,Tablet Pro iPad,Tablets,Pro,iPad,37578.64,79414.69,41836.05,78,96,8.0,128.0,,12,True,368
+93,Tablet Pro Samsung,Tablets,Pro,Samsung,29232.55,65802.17,36569.61,48,61,6.0,128.0,,12,True,350
+94,Tablet Pro iPad,Tablets,Pro,iPad,43561.31,59923.63,16362.32,47,39,8.0,256.0,,24,True,296
+95,Monitor Standard LG,Monitors,Standard,LG,10071.73,11008.77,937.04,23,59,,,,36,True,55
+96,Monitor Standard ASUS,Monitors,Standard,Dell,5138.15,9995.4,4857.25,20,20,,,,24,True,196
+97,Monitor Standard LG,Monitors,Standard,ASUS,6939.28,14796.86,7857.58,87,52,,,,36,True,157
+98,Monitor Standard Dell,Monitors,Standard,Dell,5966.5,18098.36,12131.86,89,68,,,,24,True,226
+99,Monitor Standard LG,Monitors,Standard,LG,9875.46,15179.43,5303.97,47,58,,,,36,True,363
+100,Monitor Standard ASUS,Monitors,Standard,ASUS,5542.27,11775.16,6232.88,41,46,,,,36,True,158
+101,Monitor Standard LG,Monitors,Standard,Dell,10265.06,16689.24,6424.18,73,72,,,,24,True,374
+102,Monitor Standard LG,Monitors,Standard,ASUS,9623.41,15059.17,5435.76,29,54,,,,24,True,224
+103,Monitor Standard ASUS,Monitors,Standard,ASUS,10526.46,16940.77,6414.31,73,64,,,,24,True,117
+104,Monitor Standard Dell,Monitors,Standard,Dell,5668.08,8923.44,3255.36,20,26,,,,24,True,479
+105,Monitor Standard LG,Monitors,Standard,LG,7095.02,15510.7,8415.68,66,75,,,,24,True,260
+106,Monitor Standard ASUS,Monitors,Standard,Dell,11097.85,14347.25,3249.39,45,74,,,,36,True,275
+107,Monitor Standard LG,Monitors,Standard,LG,5460.24,12036.45,6576.21,59,36,,,,36,True,333
+108,Monitor Gaming BenQ,Monitors,Gaming,MSI,17606.59,21683.73,4077.14,20,20,,,,24,True,304
+109,Monitor Gaming ASUS,Monitors,Gaming,BenQ,33098.84,57789.28,24690.44,100,84,,,,36,True,319
+110,Monitor Gaming MSI,Monitors,Gaming,ASUS,26585.68,40507.54,13921.86,41,43,,,,36,True,270
+111,Monitor Gaming MSI,Monitors,Gaming,MSI,27114.67,28652.96,1538.29,59,28,,,,36,True,71
+112,Monitor Gaming MSI,Monitors,Gaming,ASUS,35912.06,55897.45,19985.39,100,79,,,,24,True,107
+113,Monitor Gaming ASUS,Monitors,Gaming,BenQ,22978.37,35646.79,12668.42,36,20,,,,36,True,49
+114,Monitor Gaming MSI,Monitors,Gaming,MSI,34358.15,49408.51,15050.36,59,60,,,,24,True,463
+115,Monitor Gaming MSI,Monitors,Gaming,BenQ,35090.93,55779.2,20688.27,90,100,,,,36,True,470
+116,Monitor Gaming ASUS,Monitors,Gaming,BenQ,18408.68,55145.2,36736.52,96,100,,,,36,True,54
+117,Keyboard Mechanical Logitech,Keyboards,Mechanical,Razer,4548.33,6193.94,1645.62,72,67,,,,12,True,403
+118,Keyboard Mechanical Corsair,Keyboards,Mechanical,Corsair,4151.81,7452.21,3300.4,78,100,,,,12,True,26
+119,Keyboard Mechanical Logitech,Keyboards,Mechanical,Logitech,1617.04,4260.17,2643.13,31,27,,,,12,True,231
+120,Keyboard Mechanical Corsair,Keyboards,Mechanical,Razer,3913.32,6732.84,2819.53,86,69,,,,12,True,383
+121,Keyboard Mechanical Corsair,Keyboards,Mechanical,Razer,2445.18,5725.49,3280.31,53,67,,,,12,True,376
+122,Keyboard Mechanical Logitech,Keyboards,Mechanical,Corsair,2959.12,6622.44,3663.33,68,100,,,,12,True,498
+123,Keyboard Mechanical Logitech,Keyboards,Mechanical,Logitech,1789.05,6768.86,4979.81,64,90,,,,12,True,204
+124,Keyboard Mechanical Logitech,Keyboards,Mechanical,Corsair,4623.11,7661.7,3038.59,100,78,,,,12,True,67
+125,Keyboard Membrane Dell,Keyboards,Membrane,Dell,1001.58,1695.0,693.42,79,70,,,,12,True,439
+126,Keyboard Membrane Dell,Keyboards,Membrane,Dell,626.66,909.4,282.73,20,20,,,,12,True,190
+127,Keyboard Membrane Dell,Keyboards,Membrane,Dell,1136.52,1961.01,824.49,94,76,,,,12,True,237
+128,Keyboard Membrane Logitech,Keyboards,Membrane,Dell,882.06,1070.65,188.59,29,20,,,,12,True,214
+129,Keyboard Membrane Logitech,Keyboards,Membrane,Logitech,587.7,1357.52,769.82,32,70,,,,12,True,298
+130,Keyboard Membrane Dell,Keyboards,Membrane,Logitech,1165.91,1889.38,723.48,100,100,,,,12,True,89
+131,Keyboard Membrane Logitech,Keyboards,Membrane,Logitech,827.3,1052.42,225.12,38,20,,,,12,True,470
+132,Keyboard Membrane Dell,Keyboards,Membrane,Logitech,539.41,1789.42,1250.01,61,65,,,,12,True,491
+133,Keyboard Membrane Dell,Keyboards,Membrane,Dell,509.65,1604.46,1094.81,70,80,,,,12,True,273
+134,Keyboard Membrane Dell,Keyboards,Membrane,Dell,1162.09,1550.37,388.27,70,82,,,,12,True,323
+135,Keyboard Membrane Logitech,Keyboards,Membrane,Dell,1044.36,1377.08,332.73,73,41,,,,12,True,156
+136,Mic Wireless Logitech,Mice,Wireless,Corsair,1164.22,2488.56,1324.34,71,90,,,,12,True,46
+137,Mic Wireless Logitech,Mice,Wireless,Logitech,1795.6,2949.59,1153.99,80,100,,,,12,True,400
+138,Mic Wireless Corsair,Mice,Wireless,Corsair,1155.15,2736.55,1581.4,100,99,,,,12,True,161
+139,Mic Wireless Corsair,Mice,Wireless,Corsair,1251.96,2027.99,776.03,45,52,,,,12,True,271
+140,Mic Wireless Logitech,Mice,Wireless,Logitech,1386.01,2984.27,1598.26,85,78,,,,12,True,364
+141,Mic Wireless Logitech,Mice,Wireless,Corsair,1531.2,1810.62,279.42,65,59,,,,12,True,50
+142,Mic Wireless Logitech,Mice,Wireless,Logitech,896.68,2741.5,1844.82,98,44,,,,12,True,354
+143,Mic Wireless Corsair,Mice,Wireless,Logitech,1763.29,2313.47,550.18,82,55,,,,12,True,127
+144,Mic Wireless Corsair,Mice,Wireless,Logitech,803.71,2039.55,1235.84,66,44,,,,12,True,322
+145,Mic Wireless Logitech,Mice,Wireless,Logitech,800.45,1335.24,534.79,20,47,,,,12,True,399
+146,Mic Wireless Logitech,Mice,Wireless,Logitech,847.01,1223.84,376.83,20,20,,,,12,True,44
+147,Mic Wireless Corsair,Mice,Wireless,Corsair,1142.64,2867.75,1725.11,94,63,,,,12,True,260
+148,Mic Wireless Logitech,Mice,Wireless,Corsair,605.93,2903.62,2297.7,100,100,,,,12,True,303
+149,Mic Wireless Logitech,Mice,Wireless,Logitech,767.58,1059.95,292.37,20,20,,,,12,True,273
+150,Mic Wired Logitech,Mice,Wired,Logitech,566.25,1368.14,801.89,95,73,,,,12,True,475
+151,Mic Wired Dell,Mice,Wired,Dell,670.71,1368.9,698.2,80,87,,,,12,True,473
+152,Mic Wired Dell,Mice,Wired,Dell,796.1,1166.97,370.87,38,80,,,,12,True,178
+153,Mic Wired Logitech,Mice,Wired,Logitech,896.0,1252.43,356.43,71,67,,,,12,True,111
+154,Mic Wired Logitech,Mice,Wired,Dell,562.9,1401.38,838.47,84,100,,,,12,True,98
+155,Mic Wired Dell,Mice,Wired,Logitech,497.03,1130.21,633.18,80,93,,,,12,True,300
+156,Mic Wired Dell,Mice,Wired,Logitech,436.36,573.2,136.83,31,22,,,,12,True,337
+157,Mic Wired Dell,Mice,Wired,Logitech,611.45,979.18,367.73,27,23,,,,12,True,352
+158,Mic Wired Logitech,Mice,Wired,Dell,787.79,1218.12,430.33,83,76,,,,12,True,150
+159,Mic Wired Dell,Mice,Wired,Logitech,510.97,601.42,90.45,20,20,,,,12,True,153
+160,Mic Wired Dell,Mice,Wired,Logitech,353.78,1217.64,863.86,76,70,,,,12,True,83
+161,Mic Wired Logitech,Mice,Wired,Dell,779.87,795.28,15.41,21,37,,,,12,True,371
+162,Laptop Bag Standard HP,Laptop Bags,Standard,HP,1741.68,2203.22,461.54,60,60,,,,12,True,130
+163,Laptop Bag Standard HP,Laptop Bags,Standard,HP,1607.83,2800.05,1192.21,71,79,,,,12,True,176
+164,Laptop Bag Standard Dell,Laptop Bags,Standard,Dell,1401.06,2247.72,846.66,95,43,,,,12,True,158
+165,Laptop Bag Standard Dell,Laptop Bags,Standard,Dell,714.86,1047.28,332.42,20,26,,,,12,True,263
+166,Laptop Bag Standard Dell,Laptop Bags,Standard,Dell,770.13,1549.08,778.95,52,41,,,,12,True,496
+167,Laptop Bag Standard Dell,Laptop Bags,Standard,Dell,1009.31,2637.41,1628.11,57,97,,,,12,True,173
+168,Laptop Bag Standard Dell,Laptop Bags,Standard,HP,830.24,1646.74,816.5,22,20,,,,12,True,36
+169,Laptop Bag Standard HP,Laptop Bags,Standard,Dell,1368.2,1542.29,174.09,52,40,,,,12,True,181
+170,Laptop Bag Standard Dell,Laptop Bags,Standard,Dell,1394.21,2115.57,721.36,51,81,,,,12,True,296
+171,Laptop Bag Standard Dell,Laptop Bags,Standard,HP,1505.81,1818.96,313.15,59,36,,,,12,True,39
+172,Laptop Bag Standard HP,Laptop Bags,Standard,HP,881.57,1798.63,917.06,41,51,,,,12,True,465
+173,Laptop Bag Standard Dell,Laptop Bags,Standard,HP,1506.32,2652.14,1145.81,93,96,,,,12,True,370
+174,Laptop Bag Standard Dell,Laptop Bags,Standard,HP,705.17,2873.92,2168.74,66,100,,,,12,True,428
+175,Laptop Bag Standard Dell,Laptop Bags,Standard,Dell,1543.53,2149.17,605.64,27,75,,,,12,True,167
+176,Laptop Bag Premium Dell,Laptop Bags,Premium,Samsonite,2758.47,5164.27,2405.8,66,65,,,,12,True,139
+177,Laptop Bag Premium Dell,Laptop Bags,Premium,Samsonite,2202.51,5871.97,3669.46,100,97,,,,12,True,279
+178,Laptop Bag Premium Samsonite,Laptop Bags,Premium,Dell,2050.56,5694.78,3644.23,82,100,,,,12,True,401
+179,Laptop Bag Premium Samsonite,Laptop Bags,Premium,Dell,2660.82,4518.32,1857.5,48,49,,,,12,True,456
+180,Laptop Bag Premium Dell,Laptop Bags,Premium,Dell,2953.49,3648.11,694.63,44,39,,,,12,True,354
+181,Laptop Bag Premium Samsonite,Laptop Bags,Premium,Samsonite,1904.69,5984.6,4079.9,100,94,,,,12,True,165
+182,Laptop Bag Premium Dell,Laptop Bags,Premium,Dell,2345.9,3303.14,957.24,20,20,,,,12,True,230
+183,Laptop Bag Premium Samsonite,Laptop Bags,Premium,Samsonite,2923.01,4581.12,1658.11,37,49,,,,12,True,101
+184,Laptop Bag Premium Dell,Laptop Bags,Premium,Dell,2666.94,3530.66,863.72,23,20,,,,12,True,88
+185,Laptop Bag Premium Samsonite,Laptop Bags,Premium,Samsonite,2847.87,5042.92,2195.06,74,50,,,,12,True,347
+186,Laptop Bag Premium Samsonite,Laptop Bags,Premium,Samsonite,1916.31,3127.9,1211.59,20,20,,,,12,True,291
+187,Laptop Bag Premium Dell,Laptop Bags,Premium,Dell,2028.96,5593.98,3565.02,97,67,,,,12,True,30
+188,Laptop Bag Premium Samsonite,Laptop Bags,Premium,Dell,3521.2,4976.08,1454.88,62,60,,,,12,True,212
+189,Laptop Bag Premium Samsonite,Laptop Bags,Premium,Samsonite,2691.81,4159.05,1467.23,20,34,,,,12,True,425
+190,Laptop Bag Premium Samsonite,Laptop Bags,Premium,Dell,3578.9,4329.82,750.92,56,62,,,,12,True,286
+191,Charger Standard HP,Chargers,Standard,Dell,811.95,1296.54,484.58,47,20,,,,12,True,270
+192,Charger Standard Dell,Chargers,Standard,Dell,996.18,1764.37,768.19,91,65,,,,12,True,301
+193,Charger Standard HP,Chargers,Standard,HP,969.01,1774.63,805.63,84,100,,,,12,True,356
+194,Charger Standard HP,Chargers,Standard,HP,1187.98,1601.88,413.9,83,67,,,,12,True,192
+195,Charger Standard Dell,Chargers,Standard,HP,657.01,1375.99,718.99,20,52,,,,12,True,297
+196,Charger Standard HP,Chargers,Standard,Dell,897.63,1012.71,115.09,20,20,,,,12,True,135
+197,Charger Standard Dell,Chargers,Standard,HP,1105.2,1728.49,623.29,82,90,,,,12,True,357
+198,Charger Standard Dell,Chargers,Standard,HP,625.9,1164.81,538.91,22,20,,,,12,True,53
+199,Charger Standard HP,Chargers,Standard,Dell,1039.68,1542.24,502.56,57,93,,,,12,True,117
+200,Charger Standard HP,Chargers,Standard,HP,981.77,1761.12,779.35,74,57,,,,12,True,492
+201,Charger Standard Dell,Chargers,Standard,HP,840.9,1800.07,959.17,83,58,,,,12,True,22
+202,Charger Standard Dell,Chargers,Standard,Dell,923.22,1524.16,600.94,55,55,,,,12,True,29
+203,Charger Standard HP,Chargers,Standard,HP,796.16,1148.89,352.73,25,20,,,,12,True,403
+204,Charger Standard HP,Chargers,Standard,HP,1131.72,1593.04,461.33,38,32,,,,12,True,66
+205,Charger Standard Dell,Chargers,Standard,HP,832.6,1402.33,569.72,40,56,,,,12,True,397
+206,Charger Fast Belkin,Chargers,Fast,Belkin,2648.37,4705.87,2057.5,58,80,,,,12,True,118
+207,Charger Fast Anker,Chargers,Fast,Anker,2990.22,5927.88,2937.66,100,90,,,,12,True,192
+208,Charger Fast Belkin,Chargers,Fast,Belkin,1766.06,3485.69,1719.63,48,50,,,,12,True,249
+209,Charger Fast Anker,Chargers,Fast,Belkin,1627.81,4743.65,3115.84,73,47,,,,12,True,263
+210,Charger Fast Belkin,Chargers,Fast,Anker,2607.55,4790.68,2183.13,61,50,,,,12,True,365
+211,Charger Fast Anker,Chargers,Fast,Belkin,1520.35,2322.41,802.05,20,34,,,,12,True,183
+212,Charger Fast Belkin,Chargers,Fast,Belkin,2664.54,5005.5,2340.96,80,76,,,,12,True,400
+213,Charger Fast Belkin,Chargers,Fast,Belkin,1792.75,5625.02,3832.27,78,76,,,,12,True,338
+214,Charger Fast Anker,Chargers,Fast,Belkin,2370.17,5625.75,3255.58,92,73,,,,12,True,169
+215,Charger Fast Belkin,Chargers,Fast,Anker,2793.1,5853.58,3060.48,100,97,,,,12,True,174
+216,Charger Fast Belkin,Chargers,Fast,Anker,3555.11,4616.7,1061.59,69,45,,,,12,True,454
+217,Charger Fast Belkin,Chargers,Fast,Anker,1473.83,2604.99,1131.16,20,20,,,,12,True,70
+218,Charger Fast Belkin,Chargers,Fast,Anker,3264.34,4891.26,1626.92,74,66,,,,12,True,339
+219,Charger Fast Anker,Chargers,Fast,Belkin,1597.86,5782.79,4184.93,100,100,,,,12,True,85
+220,Charger Fast Anker,Chargers,Fast,Anker,1349.46,4050.01,2700.56,48,71,,,,12,True,29
+221,USB Hub Basic Anker,USB Hubs,Basic,Belkin,717.75,1708.1,990.35,53,77,,,,12,True,390
+222,USB Hub Basic Belkin,USB Hubs,Basic,Anker,804.89,1981.99,1177.1,97,87,,,,12,True,288
+223,USB Hub Basic Belkin,USB Hubs,Basic,Belkin,1071.91,1256.5,184.59,39,20,,,,12,True,56
+224,USB Hub Basic Belkin,USB Hubs,Basic,Belkin,621.01,1876.35,1255.34,48,100,,,,12,True,268
+225,USB Hub Basic Belkin,USB Hubs,Basic,Anker,1125.97,1408.46,282.49,44,52,,,,12,True,487
+226,USB Hub Basic Belkin,USB Hubs,Basic,Anker,923.01,1858.9,935.89,88,100,,,,12,True,278
+227,USB Hub Basic Anker,USB Hubs,Basic,Anker,712.57,1996.49,1283.93,100,88,,,,12,True,391
+228,USB Hub Basic Anker,USB Hubs,Basic,Belkin,752.9,1968.15,1215.25,78,82,,,,12,True,404
+229,USB Hub Basic Anker,USB Hubs,Basic,Anker,1128.93,1582.0,453.07,48,52,,,,12,True,286
+230,USB Hub Powered Belkin,USB Hubs,Powered,Anker,2686.76,2719.62,32.86,20,20,,,,12,True,393
+231,USB Hub Powered Anker,USB Hubs,Powered,Anker,1834.27,4524.34,2690.07,90,83,,,,12,True,492
+232,USB Hub Powered Anker,USB Hubs,Powered,Anker,2435.39,2524.64,89.26,20,25,,,,12,True,418
+233,USB Hub Powered Belkin,USB Hubs,Powered,Belkin,1587.95,3081.13,1493.18,57,28,,,,12,True,219
+234,USB Hub Powered Belkin,USB Hubs,Powered,Belkin,2371.38,4622.68,2251.3,64,66,,,,12,True,39
+235,USB Hub Powered Anker,USB Hubs,Powered,Belkin,2644.24,3437.21,792.97,47,43,,,,12,True,92
+236,USB Hub Powered Belkin,USB Hubs,Powered,Anker,2951.0,4478.12,1527.12,95,90,,,,12,True,384
+237,USB Hub Powered Anker,USB Hubs,Powered,Belkin,2158.82,3905.27,1746.45,41,59,,,,12,True,329
+238,USB Hub Powered Anker,USB Hubs,Powered,Anker,2220.91,2851.49,630.58,39,20,,,,12,True,370
+239,USB Hub Powered Anker,USB Hubs,Powered,Anker,1794.73,3021.22,1226.48,52,35,,,,12,True,478
+240,USB Hub Powered Belkin,USB Hubs,Powered,Anker,2138.6,2190.92,52.32,20,23,,,,12,True,44
+241,Headphone Budget Xiaomi,Headphones,Budget,Realme,677.62,2911.65,2234.02,78,93,,,,12,True,316
+242,Headphone Budget Xiaomi,Headphones,Budget,Xiaomi,1134.3,2577.6,1443.31,99,95,,,,12,True,481
+243,Headphone Budget Realme,Headphones,Budget,Xiaomi,1320.78,2487.19,1166.41,100,75,,,,12,True,271
+244,Headphone Budget Xiaomi,Headphones,Budget,Realme,654.78,1280.05,625.27,20,20,,,,12,True,150
+245,Headphone Budget Xiaomi,Headphones,Budget,Xiaomi,1244.41,2708.27,1463.86,78,97,,,,12,True,372
+246,Headphone Budget Realme,Headphones,Budget,Realme,653.27,1555.64,902.38,20,40,,,,12,True,50
+247,Headphone Budget Xiaomi,Headphones,Budget,Realme,635.6,2350.84,1715.24,66,58,,,,12,True,341
+248,Headphone Budget Xiaomi,Headphones,Budget,Realme,1658.71,2341.89,683.18,79,49,,,,12,True,17
+249,Headphone Premium Sony,Headphones,Premium,Apple,8727.61,8864.11,136.5,27,20,,,,12,True,429
+250,Headphone Premium Sony,Headphones,Premium,Apple,6321.48,6815.38,493.9,34,20,,,,12,True,267
+251,Headphone Premium Sony,Headphones,Premium,Sony,9017.15,15180.05,6162.9,85,41,,,,12,True,48
+252,Headphone Premium Apple,Headphones,Premium,Apple,10863.29,15859.6,4996.31,73,61,,,,12,True,330
+253,Headphone Premium Apple,Headphones,Premium,Bose,3759.53,10990.53,7231.0,37,20,,,,12,True,429
+254,Headphone Premium Apple,Headphones,Premium,Sony,9056.7,9130.72,74.02,42,20,,,,12,True,72
+255,Headphone Premium Apple,Headphones,Premium,Sony,3889.86,18344.78,14454.92,87,83,,,,12,True,65
+256,Headphone Premium Apple,Headphones,Premium,Apple,9857.16,19199.67,9342.51,98,62,,,,12,True,135
+257,Webcam Standard Dell,Webcams,Standard,Logitech,1760.19,4031.36,2271.17,43,86,,,,12,True,334
+258,Webcam Standard Logitech,Webcams,Standard,Dell,1611.28,4932.36,3321.08,81,99,,,,12,True,243
+259,Webcam Standard Logitech,Webcams,Standard,Logitech,1911.78,2939.62,1027.84,30,20,,,,12,True,366
+260,Webcam Standard Logitech,Webcams,Standard,Dell,2053.21,3332.38,1279.17,44,46,,,,12,True,118
+261,Webcam Standard Dell,Webcams,Standard,Dell,2947.34,4320.62,1373.28,77,83,,,,12,True,444
+262,Webcam Standard Logitech,Webcams,Standard,Dell,1841.13,4480.44,2639.31,69,91,,,,12,True,368
+263,Webcam Standard Logitech,Webcams,Standard,Logitech,2180.69,2495.73,315.04,21,20,,,,12,True,223
+264,Webcam Standard Dell,Webcams,Standard,Dell,2224.88,3861.98,1637.1,55,42,,,,12,True,73
+265,Webcam Standard Logitech,Webcams,Standard,Dell,2267.43,3797.36,1529.94,50,28,,,,12,True,474
+266,Webcam Standard Logitech,Webcams,Standard,Dell,2425.36,3400.35,974.99,46,56,,,,12,True,426
+267,Webcam Professional Logitech,Webcams,Professional,Razer,7570.79,8865.41,1294.62,20,85,,,,12,True,101
+268,Webcam Professional Logitech,Webcams,Professional,Logitech,7965.11,12645.28,4680.16,84,77,,,,12,True,378
+269,Webcam Professional Logitech,Webcams,Professional,Logitech,4790.61,7403.82,2613.21,20,20,,,,12,True,217
+270,Webcam Professional Razer,Webcams,Professional,Logitech,7575.58,14292.57,6717.0,100,99,,,,12,True,193
+271,Webcam Professional Logitech,Webcams,Professional,Razer,6171.47,12933.94,6762.47,97,57,,,,12,True,137
+272,Webcam Professional Razer,Webcams,Professional,Razer,7855.1,13844.24,5989.14,79,93,,,,12,True,423
+273,Webcam Professional Logitech,Webcams,Professional,Logitech,3146.99,8061.37,4914.38,62,42,,,,12,True,132
+274,Webcam Professional Logitech,Webcams,Professional,Logitech,8213.67,11817.49,3603.82,66,43,,,,12,True,299
+275,Webcam Professional Logitech,Webcams,Professional,Logitech,4686.03,13034.83,8348.8,78,90,,,,12,True,410
+276,Webcam Professional Logitech,Webcams,Professional,Logitech,6842.86,14789.81,7946.95,73,100,,,,12,True,41
+277,Webcam Professional Razer,Webcams,Professional,Logitech,5696.1,10858.65,5162.55,48,61,,,,12,True,417
+278,Webcam Professional Razer,Webcams,Professional,Logitech,4739.82,10632.89,5893.07,45,79,,,,12,True,84
+279,Webcam Professional Razer,Webcams,Professional,Razer,4629.28,9024.47,4395.18,50,54,,,,12,True,434
+280,Printer Inkjet Canon,Printers,Inkjet,Canon,7317.6,20595.37,13277.77,64,69,,,,12,True,461
+281,Printer Inkjet Canon,Printers,Inkjet,HP,12847.11,23161.83,10314.72,100,87,,,,12,True,426
+282,Printer Inkjet HP,Printers,Inkjet,Canon,14287.74,22352.23,8064.48,71,90,,,,12,True,373
+283,Printer Inkjet Canon,Printers,Inkjet,HP,6121.93,19493.84,13371.91,100,61,,,,24,True,37
+284,Printer Inkjet HP,Printers,Inkjet,HP,13631.37,16091.45,2460.09,51,35,,,,12,True,219
+285,Printer Inkjet HP,Printers,Inkjet,Canon,10431.11,15068.56,4637.45,29,62,,,,24,True,118
+286,Printer Inkjet Canon,Printers,Inkjet,HP,12491.03,14710.48,2219.45,41,34,,,,12,True,236
+287,Printer Inkjet HP,Printers,Inkjet,Canon,11602.04,21996.26,10394.22,85,100,,,,12,True,289
+288,Printer Inkjet HP,Printers,Inkjet,Canon,13350.31,20059.51,6709.2,58,88,,,,12,True,387
+289,Printer Inkjet Canon,Printers,Inkjet,HP,10094.13,19518.22,9424.09,83,56,,,,24,True,190
+290,Printer Inkjet HP,Printers,Inkjet,HP,5579.13,14503.87,8924.74,21,31,,,,12,True,451
+291,Printer Inkjet HP,Printers,Inkjet,HP,7077.29,18911.62,11834.33,90,91,,,,24,True,466
+292,Printer Inkjet HP,Printers,Inkjet,HP,10379.03,22105.97,11726.95,59,94,,,,24,True,498
+293,Printer Laser HP,Printers,Laser,HP,15658.3,36783.47,21125.17,45,73,,,,12,True,321
+294,Printer Laser Canon,Printers,Laser,HP,35765.85,39501.7,3735.85,35,45,,,,12,True,310
+295,Printer Laser HP,Printers,Laser,HP,16458.41,59174.4,42715.99,100,99,,,,12,True,61
+296,Printer Laser HP,Printers,Laser,Canon,18108.18,47624.15,29515.97,61,73,,,,24,True,317
+297,Printer Laser HP,Printers,Laser,Canon,15216.77,17005.37,1788.6,20,20,,,,24,True,462
+298,Printer Laser Canon,Printers,Laser,Canon,25764.53,56789.71,31025.18,97,100,,,,12,True,102
+299,Printer Laser Canon,Printers,Laser,Canon,21996.0,55395.36,33399.36,77,95,,,,12,True,79
+300,Printer Laser HP,Printers,Laser,HP,11940.12,43644.24,31704.12,24,62,,,,24,True,98
+301,Printer Laser Canon,Printers,Laser,Canon,33823.46,52322.62,18499.16,70,100,,,,24,True,256
+302,Printer Laser HP,Printers,Laser,Canon,19605.43,53439.99,33834.55,74,100,,,,12,True,97
+303,Printer Laser HP,Printers,Laser,HP,29616.63,53484.31,23867.68,100,90,,,,24,True,478
+304,Printer Laser HP,Printers,Laser,HP,14996.05,29475.15,14479.1,39,42,,,,12,True,373
+305,Ink Cartridge Standard Canon,Ink Cartridges,Standard,Canon,300.4,1852.07,1551.68,90,99,,,,12,True,126
+306,Ink Cartridge Standard Canon,Ink Cartridges,Standard,HP,329.36,586.55,257.2,20,20,,,,12,True,100
+307,Ink Cartridge Standard Canon,Ink Cartridges,Standard,Canon,674.04,1770.91,1096.86,92,94,,,,12,True,246
+308,Ink Cartridge Standard HP,Ink Cartridges,Standard,HP,502.4,1147.07,644.67,50,68,,,,12,True,197
+309,Ink Cartridge Standard HP,Ink Cartridges,Standard,Canon,687.09,1855.64,1168.54,85,100,,,,12,True,125
+310,Ink Cartridge Standard Canon,Ink Cartridges,Standard,Canon,484.01,882.96,398.95,36,20,,,,12,True,280
+311,Ink Cartridge Standard HP,Ink Cartridges,Standard,Canon,1091.55,1190.0,98.46,36,64,,,,12,True,125
+312,Ink Cartridge Standard HP,Ink Cartridges,Standard,Canon,682.71,691.8,9.09,23,20,,,,12,True,94
+313,Ink Cartridge Standard Canon,Ink Cartridges,Standard,Canon,573.55,845.62,272.08,41,35,,,,12,True,366
+314,Ink Cartridge Standard Canon,Ink Cartridges,Standard,Canon,941.36,1725.17,783.81,74,64,,,,12,True,31
+315,Ink Cartridge Standard Canon,Ink Cartridges,Standard,HP,653.88,1385.96,732.08,50,62,,,,12,True,263
+316,Ink Cartridge Standard HP,Ink Cartridges,Standard,HP,825.4,1928.33,1102.94,71,100,,,,12,True,200
+317,Printer Pape A4 ITC,Printer Paper,A4,ITC,181.95,783.45,601.5,79,94,,,,12,True,416
+318,Printer Pape A4 Paperline,Printer Paper,A4,Paperline,165.05,710.28,545.24,81,84,,,,12,True,317
+319,Printer Pape A4 ITC,Printer Paper,A4,Paperline,176.64,271.32,94.69,22,29,,,,12,True,280
+320,Printer Pape A4 ITC,Printer Paper,A4,ITC,302.4,432.34,129.94,32,43,,,,12,True,397
+321,Printer Pape A4 Paperline,Printer Paper,A4,Paperline,321.23,500.65,179.42,54,77,,,,12,True,497
+322,Printer Pape A4 ITC,Printer Paper,A4,Paperline,184.53,680.0,495.47,47,96,,,,12,True,437
+323,Printer Pape A4 Paperline,Printer Paper,A4,Paperline,224.42,722.85,498.43,100,96,,,,12,True,92
+324,Printer Pape A4 Paperline,Printer Paper,A4,ITC,346.08,348.51,2.43,20,20,,,,12,True,399
+325,External SSD 256GB-512GB WD,External SSDs,256GB-512GB,Samsung,3091.62,7389.92,4298.3,66,96,,256.0,,12,True,388
+326,External SSD 256GB-512GB Kingston,External SSDs,256GB-512GB,WD,1969.76,4869.61,2899.85,39,44,,512.0,,12,True,486
+327,External SSD 256GB-512GB WD,External SSDs,256GB-512GB,WD,2104.12,4389.26,2285.15,20,20,,256.0,,12,True,67
+328,External SSD 256GB-512GB Kingston,External SSDs,256GB-512GB,Kingston,2139.91,5018.01,2878.09,53,55,,256.0,,12,True,275
+329,External SSD 256GB-512GB Kingston,External SSDs,256GB-512GB,Samsung,3350.37,6700.81,3350.44,86,100,,512.0,,12,True,239
+330,External SSD 256GB-512GB WD,External SSDs,256GB-512GB,Kingston,2005.0,5151.87,3146.87,37,71,,256.0,,12,True,143
+331,External SSD 256GB-512GB Samsung,External SSDs,256GB-512GB,Samsung,2552.68,6380.13,3827.45,79,90,,256.0,,12,True,92
+332,External SSD 256GB-512GB Samsung,External SSDs,256GB-512GB,Samsung,2117.72,3774.14,1656.43,20,20,,512.0,,12,True,310
+333,External SSD 1TB WD,External SSDs,1TB,Samsung,8732.32,11793.93,3061.61,65,76,,1024.0,,12,True,63
+334,External SSD 1TB WD,External SSDs,1TB,WD,6173.59,14230.4,8056.81,92,93,,1024.0,,12,True,282
+335,External SSD 1TB WD,External SSDs,1TB,WD,7096.88,12694.73,5597.85,52,76,,1024.0,,12,True,56
+336,External SSD 1TB Samsung,External SSDs,1TB,WD,4923.92,10491.8,5567.88,31,46,,1024.0,,12,True,347
+337,External SSD 1TB Samsung,External SSDs,1TB,WD,6363.24,10331.24,3968.0,29,46,,1024.0,,12,True,367
+338,External SSD 1TB Samsung,External SSDs,1TB,Samsung,7920.1,13165.42,5245.32,62,74,,1024.0,,12,True,304
+339,External SSD 1TB Samsung,External SSDs,1TB,Samsung,5929.18,10579.14,4649.96,41,47,,1024.0,,12,True,197
+340,External SSD 1TB WD,External SSDs,1TB,WD,8301.3,11496.02,3194.72,32,51,,1024.0,,12,True,148
+341,External SSD 1TB Samsung,External SSDs,1TB,Samsung,7315.15,9407.69,2092.54,20,44,,1024.0,,12,True,320
+342,External SSD 1TB WD,External SSDs,1TB,WD,7794.43,8080.45,286.02,20,20,,1024.0,,12,True,30
+343,External SSD 1TB Samsung,External SSDs,1TB,WD,7936.46,13043.96,5107.5,68,91,,1024.0,,12,True,243
