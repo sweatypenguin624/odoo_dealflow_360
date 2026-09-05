@@ -2,6 +2,7 @@ from typing import List
 from sqlalchemy.orm import Session
 from app.models import Customer, Product, Quote, QuoteLine
 from app.services.risk_engine import LineInput
+from app.services.fulfillment_engine import LineToFulfill
 
 
 def build_line_inputs(quote_id: int, db: Session, quote: Quote) -> List[LineInput]:
@@ -34,3 +35,20 @@ def build_line_inputs(quote_id: int, db: Session, quote: Quote) -> List[LineInpu
     ]
 
     return line_inputs
+
+
+def build_fulfillment_lines(quote_id: int, db: Session) -> List[LineToFulfill]:
+    """
+    Loads a quote's lines and builds LineToFulfill objects for the
+    fulfillment engine (product + quantity, no pricing/discount info).
+    """
+    lines = db.query(QuoteLine).filter(QuoteLine.quote_id == quote_id).all()
+
+    return [
+        LineToFulfill(
+            quote_line_id=line.id,
+            product_id=line.product_id,
+            quantity_needed=line.quantity,
+        )
+        for line in lines
+    ]
