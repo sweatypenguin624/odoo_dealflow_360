@@ -44,7 +44,9 @@ from app.models import (
     CustomerTier,
     FulfillmentPlan,
     FulfillmentSplit,
+    Invoice,
     LineComment,
+    Payment,
     PortalToken,
     Product,
     ProductPairing,
@@ -63,6 +65,8 @@ from app.services.portal_auth import generate_portal_token
 def wipe(db):
     # FK-safe order: children before parents.
     for model in [
+        Payment,
+        Invoice,
         BillingEvent,
         Subscription,
         SubscriptionPlan,
