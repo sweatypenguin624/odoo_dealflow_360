@@ -1,6 +1,6 @@
 import enum
 
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime, Enum
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime, Enum, JSON
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 
@@ -22,6 +22,9 @@ class Quote(Base):
     customer_id = Column(Integer, ForeignKey("customers.id"), nullable=False)
     status = Column(Enum(QuoteStatus), nullable=False, default=QuoteStatus.draft)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    required_approval_level = Column(String, nullable=True)
+    current_approval_step = Column(String, nullable=True)
+    risk_reasons = Column(JSON, nullable=True)
 
     customer = relationship("Customer")
     lines = relationship("QuoteLine", back_populates="quote")
