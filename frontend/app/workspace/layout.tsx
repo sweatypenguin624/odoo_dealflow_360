@@ -37,6 +37,7 @@ function WorkspaceHeader() {
             <NavLink href="/workspace/quotations">Quotations</NavLink>
             <NavLink href="/workspace/quotations?view=pipeline">Pipeline</NavLink>
             <NavLink href="/workspace/approvals">Approvals</NavLink>
+            <NavLink href="/workspace/dashboard">Deal Health</NavLink>
           </nav>
         </div>
         <div className="flex items-center gap-2 text-sm">

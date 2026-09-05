@@ -244,8 +244,7 @@ export interface CustomerRef {
   max_discount_pct: number;
 }
 
-// ---- Deal health (Phase 7 - types kept here for completeness, not used
-// by this phase's screens per spec) ----
+// ---- Deal health (Phase 7, dashboard screen added in Phase 9) ----
 
 export interface DealHealthFlag {
   flag_type: "stalled" | "discount_anomaly";
