@@ -9,19 +9,26 @@ import {
   getPendingApproval,
   getRecentAuditLog,
   listCustomers,
+  listInvoices,
   listProducts,
   listQuotes,
 } from "@/lib/api";
 import type {
   CustomerRef,
+  InvoiceListItem,
   ProductRef,
   QuoteHealth,
   QuoteListItem,
   RecentAuditLogEntry,
 } from "@/lib/api";
 import { useReload } from "@/lib/reload-context";
+import { useRole } from "@/lib/roleContext";
 
 const OPEN_STATUSES = new Set(["draft", "pending_approval", "approved"]);
+// Client-side keyword filter over the existing recent-activity feed - no
+// new backend endpoint needed, per the "acceptable fallback" guidance for
+// finance-relevant activity.
+const FINANCE_ACTIVITY_KEYWORDS = ["approv", "payment", "invoice"];
 
 function Tile({ label, value, href }: { label: string; value: number; href: string }) {
   return (
@@ -166,10 +173,14 @@ function NewQuotationForm({
 
 export default function DashboardHomePage() {
   const { reloadNonce } = useReload();
+  const { role } = useRole();
 
   const [pendingApprovals, setPendingApprovals] = useState<QuoteListItem[] | null>(null);
+  const [managerQueue, setManagerQueue] = useState<QuoteListItem[] | null>(null);
+  const [financeQueue, setFinanceQueue] = useState<QuoteListItem[] | null>(null);
   const [quotes, setQuotes] = useState<QuoteListItem[] | null>(null);
   const [dealHealth, setDealHealth] = useState<QuoteHealth[] | null>(null);
+  const [invoices, setInvoices] = useState<InvoiceListItem[] | null>(null);
   const [activity, setActivity] = useState<RecentAuditLogEntry[] | null>(null);
   const [customers, setCustomers] = useState<CustomerRef[]>([]);
   const [products, setProducts] = useState<ProductRef[]>([]);
@@ -177,17 +188,24 @@ export default function DashboardHomePage() {
   const [createdQuoteId, setCreatedQuoteId] = useState<number | null>(null);
 
   const fetchAll = useCallback(async () => {
-    const [pending, quoteList, health, recent, customerList, productList] = await Promise.all([
-      getPendingApproval(),
-      listQuotes(),
-      getDealHealth(),
-      getRecentAuditLog(15),
-      listCustomers(),
-      listProducts(),
-    ]);
+    const [pending, managerPending, financePending, quoteList, health, invoiceList, recent, customerList, productList] =
+      await Promise.all([
+        getPendingApproval(),
+        getPendingApproval("manager"),
+        getPendingApproval("finance"),
+        listQuotes(),
+        getDealHealth(),
+        listInvoices(),
+        getRecentAuditLog(15),
+        listCustomers(),
+        listProducts(),
+      ]);
     setPendingApprovals(pending);
+    setManagerQueue(managerPending);
+    setFinanceQueue(financePending);
     setQuotes(quoteList);
     setDealHealth(health);
+    setInvoices(invoiceList);
     setActivity(recent);
     setCustomers(customerList);
     setProducts(productList);
@@ -199,18 +217,25 @@ export default function DashboardHomePage() {
     async function load() {
       setError(null);
       try {
-        const [pending, quoteList, health, recent, customerList, productList] = await Promise.all([
-          getPendingApproval(),
-          listQuotes(),
-          getDealHealth(),
-          getRecentAuditLog(15),
-          listCustomers(),
-          listProducts(),
-        ]);
+        const [pending, managerPending, financePending, quoteList, health, invoiceList, recent, customerList, productList] =
+          await Promise.all([
+            getPendingApproval(),
+            getPendingApproval("manager"),
+            getPendingApproval("finance"),
+            listQuotes(),
+            getDealHealth(),
+            listInvoices(),
+            getRecentAuditLog(15),
+            listCustomers(),
+            listProducts(),
+          ]);
         if (!cancelled) {
           setPendingApprovals(pending);
+          setManagerQueue(managerPending);
+          setFinanceQueue(financePending);
           setQuotes(quoteList);
           setDealHealth(health);
+          setInvoices(invoiceList);
           setActivity(recent);
           setCustomers(customerList);
           setProducts(productList);
@@ -232,13 +257,43 @@ export default function DashboardHomePage() {
     () => (quotes ?? []).filter((q) => OPEN_STATUSES.has(q.status)).length,
     [quotes],
   );
-  const atRiskCount = useMemo(
+  const flaggedDealsCount = useMemo(
     () => (dealHealth ?? []).filter((q) => q.flags.length > 0).length,
     [dealHealth],
   );
+  const anomalyCount = useMemo(
+    () => (dealHealth ?? []).filter((q) => q.flags.some((f) => f.flag_type === "discount_anomaly")).length,
+    [dealHealth],
+  );
+  const unpaidInvoicesCount = useMemo(
+    () => (invoices ?? []).filter((i) => i.status === "unpaid").length,
+    [invoices],
+  );
+  const highRiskFinanceCount = useMemo(
+    () => (financeQueue ?? []).filter((q) => q.required_approval_level === "manager_then_finance").length,
+    [financeQueue],
+  );
+  const displayedActivity = useMemo(() => {
+    if (activity === null) return [];
+    if (role !== "finance_manager") return activity;
+    const filtered = activity.filter((entry) =>
+      FINANCE_ACTIVITY_KEYWORDS.some((keyword) => entry.action.includes(keyword)),
+    );
+    // Fall back to the unfiltered feed rather than showing an empty list
+    // when nothing finance-relevant has happened recently.
+    return filtered.length > 0 ? filtered : activity;
+  }, [activity, role]);
 
   if (error) return <p className="text-red-600 dark:text-red-400">Error: {error}</p>;
-  if (pendingApprovals === null || quotes === null || dealHealth === null || activity === null) {
+  if (
+    pendingApprovals === null ||
+    managerQueue === null ||
+    financeQueue === null ||
+    quotes === null ||
+    dealHealth === null ||
+    invoices === null ||
+    activity === null
+  ) {
     return <p className="text-zinc-500 dark:text-zinc-400">Loading…</p>;
   }
 
@@ -246,11 +301,53 @@ export default function DashboardHomePage() {
     <div className="flex flex-col gap-6">
       <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50">Dashboard</h1>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Tile label="Pending Approvals" value={pendingApprovals.length} href="/workspace/approvals" />
-        <Tile label="Open Quotations" value={openQuotationsCount} href="/workspace/quotations" />
-        <Tile label="At-Risk Deals" value={atRiskCount} href="/workspace/deal-health" />
-      </div>
+      {role === "rep" && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <Tile label="Pending Approvals" value={pendingApprovals.length} href="/workspace/approvals" />
+          <Tile label="Open Quotations" value={openQuotationsCount} href="/workspace/quotations" />
+          <Tile label="At-Risk Deals" value={flaggedDealsCount} href="/workspace/deal-health" />
+        </div>
+      )}
+
+      {role === "sales_manager" && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <Tile
+            label="My Approval Queue"
+            value={managerQueue.length}
+            href="/workspace/approvals?step=manager"
+          />
+          <Tile
+            label="Flagged Deals"
+            value={flaggedDealsCount}
+            href="/workspace/deal-health?filter=flagged"
+          />
+          <Tile
+            label="Team Discount Anomalies"
+            value={anomalyCount}
+            href="/workspace/deal-health?filter=discount_anomaly"
+          />
+        </div>
+      )}
+
+      {role === "finance_manager" && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <Tile
+            label="My Approval Queue"
+            value={financeQueue.length}
+            href="/workspace/approvals?step=finance"
+          />
+          <Tile
+            label="Unpaid Invoices"
+            value={unpaidInvoicesCount}
+            href="/workspace/invoices?status=unpaid"
+          />
+          <Tile
+            label="High-Risk Approvals"
+            value={highRiskFinanceCount}
+            href="/workspace/approvals?step=finance"
+          />
+        </div>
+      )}
 
       {createdQuoteId !== null && (
         <div className="rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-800 dark:border-green-900 dark:bg-green-950/40 dark:text-green-300">
@@ -261,26 +358,28 @@ export default function DashboardHomePage() {
         </div>
       )}
 
-      <NewQuotationForm
-        customers={customers}
-        products={products}
-        onCreated={(quoteId) => {
-          setCreatedQuoteId(quoteId);
-          fetchAll().catch(() => {
-            // Quote creation already succeeded; a stale tile refresh isn't worth surfacing.
-          });
-        }}
-      />
+      {role === "rep" && (
+        <NewQuotationForm
+          customers={customers}
+          products={products}
+          onCreated={(quoteId) => {
+            setCreatedQuoteId(quoteId);
+            fetchAll().catch(() => {
+              // Quote creation already succeeded; a stale tile refresh isn't worth surfacing.
+            });
+          }}
+        />
+      )}
 
       <div>
         <h2 className="mb-2 text-sm font-semibold text-zinc-900 dark:text-zinc-50">
           Recent Activity
         </h2>
-        {activity.length === 0 ? (
+        {displayedActivity.length === 0 ? (
           <p className="text-sm text-zinc-500 dark:text-zinc-400">Nothing yet.</p>
         ) : (
           <ol className="flex flex-col gap-2">
-            {activity.map((entry) => (
+            {displayedActivity.map((entry) => (
               <li
                 key={entry.id}
                 className="rounded-lg border border-zinc-200 bg-white p-3 text-sm dark:border-zinc-800 dark:bg-zinc-900"
