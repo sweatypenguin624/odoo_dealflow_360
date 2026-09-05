@@ -36,3 +36,9 @@ export const updateQuoteLine = (
   lineId: number,
   payload: { quantity?: number; discount_pct?: number },
 ) => apiPatch<QuoteLineDetail>(`/quotes/${quoteId}/lines/${lineId}`, payload);
+
+export const createQuote = (payload: {
+  customer_id: number;
+  rep_name?: string;
+  lines: { product_id: number; quantity: number; discount_pct?: number }[];
+}) => apiPost<QuoteDetail>("/quotes", payload);

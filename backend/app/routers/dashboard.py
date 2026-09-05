@@ -1,7 +1,7 @@
-from datetime import date
+from datetime import date, datetime
 from typing import Dict, List
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -130,4 +130,38 @@ def get_deal_health(db: Session = Depends(get_db)):
             ],
         )
         for snapshot in snapshots
+    ]
+
+
+# ---- Phase 10 gap-fill: the new Dashboard home screen's "Recent
+# Activity" feed needs a cross-quote audit log view - no earlier phase
+# exposed one (Phase 3's /quotes/{id}/approval-history is scoped to a
+# single quote). Kept deliberately simple: latest N entries, no
+# filtering. ----
+
+
+class RecentAuditLogResponse(BaseModel):
+    id: int
+    quote_id: int
+    customer_name: str
+    user: str
+    action: str
+    reason: str | None
+    timestamp: datetime
+
+
+@router.get("/audit-log/recent", response_model=List[RecentAuditLogResponse])
+def get_recent_audit_log(limit: int = Query(20, le=100), db: Session = Depends(get_db)):
+    logs = db.query(AuditLog).order_by(AuditLog.timestamp.desc()).limit(limit).all()
+    return [
+        RecentAuditLogResponse(
+            id=log.id,
+            quote_id=log.quote_id,
+            customer_name=log.quote.customer.name,
+            user=log.user,
+            action=log.action,
+            reason=log.reason,
+            timestamp=log.timestamp,
+        )
+        for log in logs
     ]

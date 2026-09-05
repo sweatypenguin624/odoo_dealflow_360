@@ -261,3 +261,68 @@ export interface QuoteHealth {
   applied_discount_pct: number;
   flags: DealHealthFlag[];
 }
+
+// ---- Recent activity / audit log (Phase 10 gap-fill) ----
+
+export interface RecentAuditLogEntry {
+  id: number;
+  quote_id: number;
+  customer_name: string;
+  user: string;
+  action: string;
+  reason: string | null;
+  timestamp: string;
+}
+
+// ---- Invoices / payments (Phase 10) ----
+
+export type InvoiceType = "one_time" | "recurring";
+export type InvoiceStatusValue = "unpaid" | "paid";
+
+export interface Invoice {
+  id: number;
+  quote_id: number;
+  invoice_number: string;
+  invoice_type: InvoiceType;
+  amount: number;
+  status: InvoiceStatusValue;
+  due_date: string;
+  issued_at: string;
+  subscription_id: number | null;
+}
+
+export interface InvoiceListItem {
+  id: number;
+  invoice_number: string;
+  quote_id: number;
+  customer_name: string;
+  invoice_type: InvoiceType;
+  amount: number;
+  status: InvoiceStatusValue;
+  due_date: string;
+}
+
+export interface Payment {
+  id: number;
+  amount: number;
+  paid_at: string;
+  method: string;
+  recorded_by: string;
+}
+
+export interface InvoiceDetail {
+  id: number;
+  quote_id: number;
+  customer_name: string;
+  invoice_number: string;
+  invoice_type: InvoiceType;
+  amount: number;
+  status: InvoiceStatusValue;
+  due_date: string;
+  issued_at: string;
+  subscription_id: number | null;
+  pipeline_stage: "Order Confirmed" | "Shipped" | "Invoiced" | "Paid" | string;
+  one_time_lines: OneTimeLine[];
+  recurring_lines: RecurringLine[];
+  payments: Payment[];
+}

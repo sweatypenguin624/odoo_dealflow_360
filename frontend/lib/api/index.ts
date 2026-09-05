@@ -6,3 +6,4 @@ export * from "./fulfillment";
 export * from "./billing";
 export * from "./catalog";
 export * from "./dashboard";
+export * from "./invoices";

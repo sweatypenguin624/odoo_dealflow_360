@@ -25,7 +25,11 @@ def get_pending_approval(step: Optional[str] = Query(None), db: Session = Depend
     if step:
         query = query.filter(Quote.current_approval_step == step)
     quotes = query.all()
-    return quotes
+    # Phase 10 fix: this used to return raw ORM rows, which never carried
+    # customer_name - the Approvals list screen (Phase 8) has been reading
+    # that field since it was built, so it was always coming back
+    # undefined. Reuses the same helper list_quotes() uses below.
+    return [_quote_list_item(quote) for quote in quotes]
 
 
 @router.post("/{quote_id}/evaluate", response_model=QuoteRiskResult)
@@ -214,6 +218,54 @@ def _quote_list_item(quote: Quote) -> QuoteListItemResponse:
 def list_quotes(db: Session = Depends(get_db)):
     quotes = db.query(Quote).order_by(Quote.id.desc()).all()
     return [_quote_list_item(quote) for quote in quotes]
+
+
+# ---- Phase 10 gap-fill: no earlier phase exposed a way to create a new
+# quotation from scratch - only editing an existing quote's lines was
+# built. The Dashboard's "+ New Quotation" button needs a real starting
+# point, so this is added here as a plain, additive create endpoint,
+# following the same pattern as Phase 8's other gap-fills. ----
+
+
+class NewQuoteLineRequest(BaseModel):
+    product_id: int
+    quantity: int
+    discount_pct: float = 0
+
+
+class QuoteCreateRequest(BaseModel):
+    customer_id: int
+    rep_name: Optional[str] = None
+    lines: List[NewQuoteLineRequest] = []
+
+
+@router.post("", response_model=QuoteDetailResponse)
+def create_quote(payload: QuoteCreateRequest, db: Session = Depends(get_db)):
+    customer = db.get(Customer, payload.customer_id)
+    if customer is None:
+        raise HTTPException(status_code=404, detail="Customer not found")
+
+    quote = Quote(customer_id=payload.customer_id, status=QuoteStatus.draft, rep_name=payload.rep_name)
+    db.add(quote)
+    db.flush()
+
+    for line in payload.lines:
+        product = db.get(Product, line.product_id)
+        if product is None:
+            raise HTTPException(status_code=404, detail=f"Product {line.product_id} not found")
+        db.add(
+            QuoteLine(
+                quote_id=quote.id,
+                product_id=line.product_id,
+                quantity=line.quantity,
+                discount_pct=line.discount_pct,
+                line_value=product.price * line.quantity,
+            )
+        )
+
+    db.commit()
+    db.refresh(quote)
+    return get_quote_detail(quote.id, db)
 
 
 @router.get("/{quote_id}", response_model=QuoteDetailResponse)
