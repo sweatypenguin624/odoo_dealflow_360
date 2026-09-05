@@ -10,6 +10,7 @@ from app.models.subscription_plan import SubscriptionPlan, BillingInterval
 from app.models.subscription import Subscription, BillingEvent, SubscriptionStatus, BillingEventType
 from app.models.portal_access import PortalToken
 from app.models.negotiation import LineComment, CounterProposal
+from app.models.invoice import Invoice, InvoiceType, InvoiceStatus, Payment
 
 __all__ = [
     "Customer",
@@ -36,4 +37,8 @@ __all__ = [
     "PortalToken",
     "LineComment",
     "CounterProposal",
+    "Invoice",
+    "InvoiceType",
+    "InvoiceStatus",
+    "Payment",
 ]
