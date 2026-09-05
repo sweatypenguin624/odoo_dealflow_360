@@ -188,7 +188,7 @@ export default function ApprovalDetailPage({ params }: { params: Promise<{ id: s
               className="rounded border border-zinc-200 bg-white p-3 text-sm dark:border-zinc-800 dark:bg-zinc-900"
             >
               <p className="font-medium text-zinc-900 dark:text-zinc-50">
-                {entry.action} — {entry.user}
+                {entry.action.replaceAll("_", " ")} — {entry.user}
               </p>
               {entry.reason && (
                 <p className="text-zinc-600 dark:text-zinc-400">{entry.reason}</p>
