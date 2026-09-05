@@ -6,6 +6,8 @@ from app.models.approval import ApprovalAction
 from app.models.warehouse import Warehouse, Stock
 from app.models.fulfillment import FulfillmentPlan, FulfillmentSplit, FulfillmentPlanStatus
 from app.models.upsell import ProductPairing
+from app.models.subscription_plan import SubscriptionPlan, BillingInterval
+from app.models.subscription import Subscription, BillingEvent, SubscriptionStatus, BillingEventType
 
 __all__ = [
     "Customer",
@@ -23,4 +25,10 @@ __all__ = [
     "FulfillmentSplit",
     "FulfillmentPlanStatus",
     "ProductPairing",
+    "SubscriptionPlan",
+    "BillingInterval",
+    "Subscription",
+    "BillingEvent",
+    "SubscriptionStatus",
+    "BillingEventType",
 ]

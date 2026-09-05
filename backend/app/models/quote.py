@@ -1,6 +1,6 @@
 import enum
 
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime, Enum, JSON
+from sqlalchemy import Boolean, Column, Integer, String, Float, ForeignKey, DateTime, Enum, JSON
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 
@@ -39,6 +39,7 @@ class QuoteLine(Base):
     quantity = Column(Integer, nullable=False)
     discount_pct = Column(Float, nullable=False, default=0)
     line_value = Column(Float, nullable=False)
+    is_recurring = Column(Boolean, nullable=False, default=False)
 
     quote = relationship("Quote", back_populates="lines")
     product = relationship("Product")
