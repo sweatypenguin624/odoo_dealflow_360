@@ -1,0 +1,49 @@
+{
+    "training_rows": 23883,
+    "validation_rows": 5971,
+    "training_date_range": "Unknown",
+    "validation_date_range": "Unknown",
+    "feature_names": [
+        "recommendation_type",
+        "customer_id",
+        "customer_tier",
+        "customer_total_spend",
+        "customer_invoice_count",
+        "customer_avg_invoice_value",
+        "current_product_id",
+        "candidate_product_id",
+        "candidate_price",
+        "candidate_margin",
+        "candidate_normalized_margin",
+        "support",
+        "confidence",
+        "lift",
+        "association_score",
+        "feature_improvement",
+        "price_difference",
+        "price_increase_percentage",
+        "customer_category_affinity",
+        "customer_brand_affinity",
+        "candidate_popularity",
+        "invoice_item_count",
+        "invoice_total"
+    ],
+    "model_parameters": {
+        "n_estimators": 300,
+        "max_depth": 6,
+        "learning_rate": 0.05,
+        "subsample": 0.8,
+        "colsample_bytree": 0.8,
+        "enable_categorical": true,
+        "random_state": 42,
+        "early_stopping_rounds": 20,
+        "eval_metric": "auc",
+        "tree_method": "hist",
+        "device": "cpu"
+    },
+    "validation_metrics": {
+        "roc_auc": 0.6992771300703171,
+        "precision": 0.5941176470588235,
+        "recall": 0.11840562719812427
+    }
+}

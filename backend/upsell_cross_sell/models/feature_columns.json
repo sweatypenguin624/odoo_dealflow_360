@@ -1,0 +1,27 @@
+{
+    "features": [
+        "recommendation_type",
+        "customer_id",
+        "customer_tier",
+        "customer_total_spend",
+        "customer_invoice_count",
+        "customer_avg_invoice_value",
+        "current_product_id",
+        "candidate_product_id",
+        "candidate_price",
+        "candidate_margin",
+        "candidate_normalized_margin",
+        "support",
+        "confidence",
+        "lift",
+        "association_score",
+        "feature_improvement",
+        "price_difference",
+        "price_increase_percentage",
+        "customer_category_affinity",
+        "customer_brand_affinity",
+        "candidate_popularity",
+        "invoice_item_count",
+        "invoice_total"
+    ]
+}

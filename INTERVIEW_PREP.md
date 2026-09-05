@@ -128,3 +128,28 @@ This folder contains the Object-Relational Mapping (ORM) classes that define the
 6. **State Mutation**: Controller updates `Quote.status` to `"pending_approval"` and `current_approval_step` to `"manager"`.
 7. **Audit**: Controller instantiates an `AuditLog` mapping the action.
 8. **Commit & Return**: `db.commit()` saves all changes transactionally. API returns the updated quote and risk profile to the client.
+
+---
+
+## 5. Recommendation Engine (Upsell & Cross-sell)
+
+The recommendation engine in `backend/upsell_cross_sell/` operates independently from the risk engine to surface personalized upgrade and related-product suggestions, aimed at maximizing revenue. The engine generates deterministic, rule-based baselines that will eventually be fed into an XGBoost model for final ranking.
+
+### Cross-Sell Engine (Apriori Algorithm)
+- **`cross_sell/apriori_engine.py`**: Builds the foundation by generating association rules. It processes historical invoice line items, mapping them to a matrix of transaction baskets (invoice vs. products). Using `mlxtend`, it runs the **Apriori algorithm** to identify frequent item combinations (e.g., Laptop + Mouse) and extracts conditional probabilities (confidence) and correlation strengths (lift).
+- **`cross_sell/recommender.py`**: Converts raw Apriori candidates into business-aware recommendations. It filters out items the user is already buying, inactive items, and items out of stock. It calculates a `business_score` by factoring in the product's profit margin (normalized via min-max scaling) and the customer's tier profile (Gold/Silver/Bronze multipliers), ensuring that recommendations are highly personalized and profitable.
+
+### Upsell Engine
+- **`upsell/upsell_engine.py`**: Suggests direct upgrades for items currently in a user's cart (e.g., upgrading an i5 laptop to an i7 laptop). It scans for products within the same category that are more expensive but fall within a configurable `MAX_UPSELL_PRICE_INCREASE` threshold (default 20%).
+- **Feature Comparison**: It analytically compares hardware features (`ram_gb`, `processor_tier`, `storage_gb`, etc.) to calculate a `feature_improvement` score (0-1). It automatically generates human-readable reasoning strings based on the specific improved attributes (e.g., `"Upgrade for ₹5,800 more — better processor and more storage."`).
+- **Scoring Pipeline**: Final Upsell score relies on a weighted sum of: Feature Improvement (50%), Customer Affordability (25% - derived from historical spending limits), Normalized Margin (15%), and Price Value (10% - penalizing steep price hikes).
+
+---
+
+## 6. XGBoost Recommendation Model (ML Layer)
+
+To optimize the deterministic rules over time, DealFlow360 implements an **XGBoost Classifier** that predicts the purchase probability of cross-sell and upsell candidates.
+
+- **Data Generation (`ml/build_training_data.py`)**: Mines historical invoices to create labeled positive (`target=1`) and negative (`target=0`) candidate examples. It uses a rigorous **chronological split** (80/20 train/validation by time) and strict state management to prevent **data leakage** (e.g., historical spend or product popularity is only computed up to the exact moment *before* the invoice).
+- **Model Training (`ml/train_model.py`)**: Uses `enable_categorical=True` to seamlessly handle category/product IDs and tiers. The architecture intentionally combines both Upsell and Cross-sell examples into a single model, differentiated by a `recommendation_type` feature. Supports hardware acceleration via `--device cuda/cpu`.
+- **Evaluation (`ml/evaluate_model.py`)**: Does not rely purely on accuracy. Implements bespoke evaluation metrics: **Precision@3 / Recall@3** for cross-sells, and **Precision@1 / Recall@1** for upsells. It outputs the top feature importances (`recommendation_type`, `price_difference`, `price_increase_percentage`, `candidate_margin`) to explain model decisions.
