@@ -200,6 +200,20 @@ export default function QuotationBuilderPage({ params }: { params: Promise<{ id:
             <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50">
               Quote #{quote.id} — {quote.customer_name}
             </h1>
+            <div className="mt-1 flex gap-3 text-xs">
+              <Link
+                href={`/workspace/quotations/${quote.id}/fulfillment`}
+                className="text-blue-600 hover:underline dark:text-blue-400"
+              >
+                Fulfillment
+              </Link>
+              <Link
+                href={`/workspace/quotations/${quote.id}/billing`}
+                className="text-blue-600 hover:underline dark:text-blue-400"
+              >
+                Billing
+              </Link>
+            </div>
           </div>
           <StatusBadge status={quote.status} />
         </div>
