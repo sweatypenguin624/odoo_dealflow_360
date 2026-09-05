@@ -5,6 +5,7 @@ import {
   ApiError,
   getPortalQuote,
   listPortalProducts,
+  submitCounterProposal,
   submitPortalComment,
 } from "@/lib/portalApi";
 import type { PortalProductRef, PortalQuote, PortalQuoteLine } from "@/lib/portalApi";
@@ -83,6 +84,8 @@ function CommentThread({
   );
 }
 
+type ProposalBanner = { kind: "applied" | "pending"; text: string };
+
 export default function CustomerPortalPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = use(params);
 
@@ -90,29 +93,88 @@ export default function CustomerPortalPage({ params }: { params: Promise<{ token
   const [products, setProducts] = useState<PortalProductRef[]>([]);
   const [error, setError] = useState<string | null>(null);
 
+  const [draftDiscounts, setDraftDiscounts] = useState<Record<number, string>>({});
+  const [proposalSubmitting, setProposalSubmitting] = useState(false);
+  const [proposalError, setProposalError] = useState<string | null>(null);
+  const [proposalBanner, setProposalBanner] = useState<ProposalBanner | null>(null);
+
   const productById = useMemo(() => {
     const map = new Map<number, PortalProductRef>();
     for (const product of products) map.set(product.id, product);
     return map;
   }, [products]);
 
-  const load = useCallback(async () => {
-    setError(null);
-    try {
-      const [quoteData, productList] = await Promise.all([
-        getPortalQuote(token),
-        listPortalProducts(),
-      ]);
-      setQuote(quoteData);
-      setProducts(productList);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "We couldn't load your quotation.");
-    }
+  const refetch = useCallback(async () => {
+    const [quoteData, productList] = await Promise.all([
+      getPortalQuote(token),
+      listPortalProducts(),
+    ]);
+    setQuote(quoteData);
+    setProducts(productList);
   }, [token]);
 
   useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      setError(null);
+      try {
+        const [quoteData, productList] = await Promise.all([
+          getPortalQuote(token),
+          listPortalProducts(),
+        ]);
+        if (!cancelled) {
+          setQuote(quoteData);
+          setProducts(productList);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof ApiError ? err.message : "We couldn't load your quotation.");
+        }
+      }
+    }
+
     load();
-  }, [load]);
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
+
+  const proposedEntries = Object.entries(draftDiscounts).filter(([, value]) => value.trim() !== "");
+
+  async function handleSubmitProposal() {
+    if (proposedEntries.length === 0) return;
+    setProposalSubmitting(true);
+    setProposalError(null);
+    setProposalBanner(null);
+    try {
+      const proposedLines = proposedEntries.map(([lineId, value]) => ({
+        quote_line_id: Number(lineId),
+        proposed_discount_pct: Number(value),
+      }));
+      const result = await submitCounterProposal(token, proposedLines);
+
+      setProposalBanner(
+        result.counter_proposal.status === "accepted"
+          ? {
+              kind: "applied",
+              text: "Your requested change has been applied — the quote below is up to date.",
+            }
+          : {
+              kind: "pending",
+              text: "Your request has been sent for internal review — we'll follow up shortly.",
+            },
+      );
+      setDraftDiscounts({});
+      await refetch();
+    } catch (err) {
+      setProposalError(
+        err instanceof ApiError ? err.message : "We couldn't submit your request — please try again.",
+      );
+    } finally {
+      setProposalSubmitting(false);
+    }
+  }
 
   if (error) {
     return <p className="text-red-600 dark:text-red-400">{error}</p>;
@@ -132,6 +194,18 @@ export default function CustomerPortalPage({ params }: { params: Promise<{ token
           {quote.status}
         </span>
       </div>
+
+      {proposalBanner && (
+        <div
+          className={`rounded-lg border p-4 text-sm ${
+            proposalBanner.kind === "applied"
+              ? "border-green-200 bg-green-50 text-green-800 dark:border-green-900 dark:bg-green-950/40 dark:text-green-300"
+              : "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300"
+          }`}
+        >
+          {proposalBanner.text}
+        </div>
+      )}
 
       <div className="flex flex-col gap-4">
         {quote.lines.map((line) => {
@@ -153,16 +227,52 @@ export default function CustomerPortalPage({ params }: { params: Promise<{ token
                 </p>
               </div>
 
+              <div className="mt-3 flex items-center gap-2 text-sm">
+                <label className="text-zinc-500 dark:text-zinc-400" htmlFor={`discount-${line.id}`}>
+                  Propose a different discount %:
+                </label>
+                <input
+                  id={`discount-${line.id}`}
+                  type="number"
+                  min={0}
+                  max={100}
+                  step={0.5}
+                  placeholder={`${line.discount_pct}`}
+                  value={draftDiscounts[line.id] ?? ""}
+                  onChange={(e) =>
+                    setDraftDiscounts((prev) => ({ ...prev, [line.id]: e.target.value }))
+                  }
+                  className="w-24 rounded border border-zinc-300 px-2 py-1 dark:border-zinc-700 dark:bg-zinc-900"
+                />
+              </div>
+
               <CommentThread
                 line={line}
                 onSubmit={async (comment) => {
                   await submitPortalComment(token, line.id, comment);
-                  await load();
+                  await refetch();
                 }}
               />
             </div>
           );
         })}
+      </div>
+
+      <div className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+        <p className="mb-3 text-sm text-zinc-600 dark:text-zinc-400">
+          Enter a proposed discount above for any line you&apos;d like changed, then submit — you
+          don&apos;t need to change every line.
+        </p>
+        <button
+          onClick={handleSubmitProposal}
+          disabled={proposalSubmitting || proposedEntries.length === 0}
+          className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+        >
+          {proposalSubmitting ? "Submitting…" : "Submit Request"}
+        </button>
+        {proposalError && (
+          <p className="mt-2 text-sm text-red-600 dark:text-red-400">{proposalError}</p>
+        )}
       </div>
     </div>
   );

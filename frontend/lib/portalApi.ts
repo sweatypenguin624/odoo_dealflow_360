@@ -64,3 +64,44 @@ export const submitPortalComment = (token: string, lineId: number, comment: stri
     body: { comment },
     headers: withToken(token),
   });
+
+// ---- POST /portal/counter-proposal ----
+// Mirrors backend/app/routers/portal.py's CounterProposalResult exactly.
+// `risk_result` is only present when the proposal wasn't a pure discount
+// downgrade (i.e. it needed re-evaluation by the risk engine) - the UI
+// must never surface its raw contents (reasons, approval-level names) to
+// the customer, only whether re-approval is now pending.
+
+export interface ProposedLine {
+  quote_line_id: number;
+  proposed_discount_pct: number;
+}
+
+export interface PortalCounterProposal {
+  id: number;
+  quote_id: number;
+  submitted_by: string;
+  proposed_lines: ProposedLine[];
+  status: string;
+  created_at: string;
+}
+
+export interface PortalQuoteState {
+  quote_id: number;
+  status: string;
+  required_approval_level: string | null;
+  current_approval_step: string | null;
+}
+
+export interface CounterProposalResult {
+  quote: PortalQuoteState;
+  counter_proposal: PortalCounterProposal;
+  risk_result: { required_approval_level: string } | null;
+}
+
+export const submitCounterProposal = (token: string, proposedLines: ProposedLine[]) =>
+  apiFetch<CounterProposalResult>("/portal/counter-proposal", {
+    method: "POST",
+    body: { proposed_lines: proposedLines },
+    headers: withToken(token),
+  });
