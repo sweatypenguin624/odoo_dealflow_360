@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ReactNode } from "react";
 import { ReloadProvider, useReload } from "@/lib/reload-context";
+import { ROLE_LABELS, Role, RoleProvider, useRole } from "@/lib/roleContext";
 
 // The unified internal shell (Phase 10): one persistent nav bar across
 // every internal screen, with the current module shown as a highlighted
@@ -38,6 +39,27 @@ function NavTab({ href, children }: { href: string; children: ReactNode }) {
   );
 }
 
+// Not an auth control - see lib/roleContext.tsx. Just scopes what the
+// Dashboard/Approvals/Deal Health screens show, client-side only.
+function RoleSwitcher() {
+  const { role, setRole } = useRole();
+
+  return (
+    <select
+      value={role}
+      onChange={(e) => setRole(e.target.value as Role)}
+      className="rounded border border-zinc-300 px-3 py-1.5 text-sm text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
+      aria-label="Switch role view"
+    >
+      {(Object.keys(ROLE_LABELS) as Role[]).map((r) => (
+        <option key={r} value={r}>
+          {ROLE_LABELS[r]}
+        </option>
+      ))}
+    </select>
+  );
+}
+
 function WorkspaceHeader() {
   const { reload } = useReload();
 
@@ -60,6 +82,7 @@ function WorkspaceHeader() {
           </nav>
         </div>
         <div className="flex items-center gap-2 text-sm">
+          <RoleSwitcher />
           <button
             onClick={reload}
             className="rounded border border-zinc-300 px-3 py-1.5 text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
@@ -86,11 +109,13 @@ function WorkspaceHeader() {
 
 export default function WorkspaceLayout({ children }: { children: ReactNode }) {
   return (
-    <ReloadProvider>
-      <div className="flex min-h-screen flex-1 flex-col bg-zinc-50 dark:bg-zinc-950">
-        <WorkspaceHeader />
-        <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">{children}</main>
-      </div>
-    </ReloadProvider>
+    <RoleProvider>
+      <ReloadProvider>
+        <div className="flex min-h-screen flex-1 flex-col bg-zinc-50 dark:bg-zinc-950">
+          <WorkspaceHeader />
+          <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">{children}</main>
+        </div>
+      </ReloadProvider>
+    </RoleProvider>
   );
 }
