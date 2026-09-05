@@ -106,6 +106,7 @@ class FulfillmentSplitResponse(BaseModel):
     warehouse_id: Optional[int]
     quantity_fulfilled: int
     is_backorder: bool
+    warning: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -289,6 +290,97 @@ def confirm_fulfillment(quote_id: int, db: Session = Depends(get_db)):
 
     response = FulfillmentPlanResponse.model_validate(plan)
     response.backorder_summary = _backorder_summary_for_plan(plan, db)
+    return response
+
+
+class OverrideAllocation(BaseModel):
+    quote_line_id: int
+    warehouse_id: int
+    quantity_fulfilled: int
+
+
+class OverrideRequest(BaseModel):
+    allocations: List[OverrideAllocation]
+
+
+@router.patch("/quotes/{quote_id}/fulfillment/override", response_model=FulfillmentPlanResponse)
+def override_fulfillment(quote_id: int, payload: OverrideRequest, db: Session = Depends(get_db)):
+    plan = _get_latest_plan_or_404(quote_id, db)
+
+    quote_lines = {
+        line.id: line for line in db.query(QuoteLine).filter(QuoteLine.quote_id == quote_id).all()
+    }
+
+    # A full replacement must cover every line's quantity_needed exactly.
+    totals_by_line: Dict[int, int] = {}
+    for allocation in payload.allocations:
+        totals_by_line[allocation.quote_line_id] = (
+            totals_by_line.get(allocation.quote_line_id, 0) + allocation.quantity_fulfilled
+        )
+
+    mismatches: List[str] = []
+    for line_id, quote_line in quote_lines.items():
+        provided = totals_by_line.get(line_id, 0)
+        if provided != quote_line.quantity:
+            mismatches.append(
+                f"Line {line_id}: allocations sum to {provided} but {quote_line.quantity} units are needed"
+            )
+    for line_id in set(totals_by_line) - set(quote_lines):
+        mismatches.append(f"Line {line_id} does not belong to quote {quote_id}")
+
+    if mismatches:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Allocation quantities do not match line requirements: {'; '.join(mismatches)}",
+        )
+
+    db.query(FulfillmentSplit).filter(FulfillmentSplit.fulfillment_plan_id == plan.id).delete(
+        synchronize_session=False
+    )
+
+    for allocation in payload.allocations:
+        db.add(
+            FulfillmentSplit(
+                fulfillment_plan_id=plan.id,
+                quote_line_id=allocation.quote_line_id,
+                warehouse_id=allocation.warehouse_id,
+                quantity_fulfilled=allocation.quantity_fulfilled,
+                is_backorder=False,
+            )
+        )
+
+    plan.status = FulfillmentPlanStatus.manually_overridden
+    db.add(
+        AuditLog(
+            quote_id=quote_id,
+            user="system",
+            action="fulfillment_overridden",
+            reason="Manually overridden by rep/ops user",
+        )
+    )
+
+    db.commit()
+    db.refresh(plan)
+
+    # Flag (without blocking) allocations that exceed currently known stock -
+    # a human is knowingly overriding the suggestion, so this warns rather
+    # than rejects.
+    warehouse_ids = {a.warehouse_id for a in payload.allocations}
+    stock_lookup = {
+        (s.warehouse_id, s.product_id): s.quantity_available
+        for s in db.query(Stock).filter(Stock.warehouse_id.in_(warehouse_ids)).all()
+    }
+
+    response = FulfillmentPlanResponse.model_validate(plan)
+    for split_response in response.splits:
+        quote_line = quote_lines[split_response.quote_line_id]
+        available = stock_lookup.get((split_response.warehouse_id, quote_line.product_id))
+        if available is not None and split_response.quantity_fulfilled > available:
+            split_response.warning = (
+                f"Requested {split_response.quantity_fulfilled} exceeds known available stock "
+                f"({available}) at warehouse {split_response.warehouse_id}"
+            )
+
     return response
 
 
