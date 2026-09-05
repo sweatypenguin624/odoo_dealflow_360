@@ -6,6 +6,7 @@ import { Suspense, useEffect, useState } from "react";
 import { ApiError, getPendingApproval } from "@/lib/api";
 import type { ApprovalStep, QuoteListItem } from "@/lib/api";
 import { useReload } from "@/lib/reload-context";
+import { useRole } from "@/lib/roleContext";
 import { StatusBadge } from "@/components/StatusBadge";
 
 function FilterLink({
@@ -41,8 +42,23 @@ export default function ApprovalsPage() {
 
 function ApprovalsPageInner() {
   const searchParams = useSearchParams();
-  const stepFilter = (searchParams.get("step") as ApprovalStep | null) ?? undefined;
+  const { role } = useRole();
   const { reloadNonce } = useReload();
+
+  // No explicit ?step= in the URL: default per role (manager -> manager,
+  // finance -> finance, rep -> the full queue, since reps track their own
+  // submissions across both steps). "All" is its own explicit sentinel
+  // (?step=all) rather than "no param", so a manager/finance user can still
+  // deliberately choose the full view and have it stick on this URL.
+  const rawStep = searchParams.get("step");
+  const roleDefaultStep: ApprovalStep | undefined =
+    role === "sales_manager" ? "manager" : role === "finance_manager" ? "finance" : undefined;
+  const stepFilter: ApprovalStep | undefined =
+    rawStep === "manager" || rawStep === "finance"
+      ? rawStep
+      : rawStep === "all"
+        ? undefined
+        : roleDefaultStep;
 
   const [quotes, setQuotes] = useState<QuoteListItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -73,7 +89,7 @@ function ApprovalsPageInner() {
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50">Pending Approvals</h1>
         <div className="flex gap-3 text-sm">
-          <FilterLink href="/workspace/approvals" active={!stepFilter}>
+          <FilterLink href="/workspace/approvals?step=all" active={!stepFilter}>
             All
           </FilterLink>
           <FilterLink href="/workspace/approvals?step=manager" active={stepFilter === "manager"}>

@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { ApiError, getDealHealth } from "@/lib/api";
 import type { DealHealthFlag, QuoteHealth } from "@/lib/api";
 import { useReload } from "@/lib/reload-context";
+import { useRole } from "@/lib/roleContext";
 import { StatusBadge } from "@/components/StatusBadge";
 
 // The backend's deal-health engine (backend/app/services/deal_health_engine.py)
@@ -12,10 +14,16 @@ import { StatusBadge } from "@/components/StatusBadge";
 // slippage flag was in the original plan but was never implemented there,
 // so no such indicator is built here (would be fabricated data otherwise).
 
+type FlagFilter = "flagged" | "discount_anomaly" | null;
+
 function detailHref(quote: QuoteHealth): string {
   return quote.status === "pending_approval"
     ? `/workspace/approvals/${quote.quote_id}`
     : `/workspace/quotations/${quote.quote_id}`;
+}
+
+function hasAnomaly(quote: QuoteHealth): boolean {
+  return quote.flags.some((f) => f.flag_type === "discount_anomaly");
 }
 
 function FlagBadge({ flag }: { flag: DealHealthFlag }) {
@@ -59,7 +67,19 @@ function NudgeButton({ quote }: { quote: QuoteHealth }) {
 }
 
 export default function DealHealthDashboardPage() {
+  return (
+    <Suspense fallback={<p className="text-zinc-500 dark:text-zinc-400">Loading…</p>}>
+      <DealHealthPageInner />
+    </Suspense>
+  );
+}
+
+function DealHealthPageInner() {
+  const searchParams = useSearchParams();
+  const filter = searchParams.get("filter") as FlagFilter;
+  const { role } = useRole();
   const { reloadNonce } = useReload();
+
   const [quotes, setQuotes] = useState<QuoteHealth[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -84,6 +104,23 @@ export default function DealHealthDashboardPage() {
     };
   }, [reloadNonce]);
 
+  const displayedQuotes = useMemo(() => {
+    if (quotes === null) return [];
+
+    let list = quotes;
+    if (filter === "flagged") list = list.filter((q) => q.flags.length > 0);
+    if (filter === "discount_anomaly") list = list.filter(hasAnomaly);
+
+    // Finance's specific lens: discount anomalies are financially relevant,
+    // staleness is more of an operational/rep concern - surface anomalies
+    // first rather than hiding stalled ones entirely.
+    if (role === "finance_manager") {
+      list = [...list].sort((a, b) => Number(hasAnomaly(b)) - Number(hasAnomaly(a)));
+    }
+
+    return list;
+  }, [quotes, filter, role]);
+
   if (error) return <p className="text-red-600 dark:text-red-400">Error: {error}</p>;
   if (quotes === null) return <p className="text-zinc-500 dark:text-zinc-400">Loading…</p>;
 
@@ -94,10 +131,18 @@ export default function DealHealthDashboardPage() {
         <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
           Non-terminal quotes flagged for stalled activity or unusual discounting.
         </p>
+        {filter && (
+          <p className="mt-2 text-sm text-blue-600 dark:text-blue-400">
+            Showing: {filter === "flagged" ? "flagged deals only" : "discount anomalies only"} ·{" "}
+            <Link href="/workspace/deal-health" className="underline">
+              Clear filter
+            </Link>
+          </p>
+        )}
       </div>
 
       <div className="flex flex-col gap-3">
-        {quotes.map((quote) => (
+        {displayedQuotes.map((quote) => (
           <Link
             key={quote.quote_id}
             href={detailHref(quote)}
@@ -137,8 +182,10 @@ export default function DealHealthDashboardPage() {
             )}
           </Link>
         ))}
-        {quotes.length === 0 && (
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">No active quotes to show.</p>
+        {displayedQuotes.length === 0 && (
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">
+            {filter ? "No quotes match this filter." : "No active quotes to show."}
+          </p>
         )}
       </div>
     </div>
