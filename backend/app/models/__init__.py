@@ -5,6 +5,7 @@ from app.models.audit import AuditLog
 from app.models.approval import ApprovalAction
 from app.models.warehouse import Warehouse, Stock
 from app.models.fulfillment import FulfillmentPlan, FulfillmentSplit, FulfillmentPlanStatus
+from app.models.upsell import ProductPairing
 
 __all__ = [
     "Customer",
@@ -21,4 +22,5 @@ __all__ = [
     "FulfillmentPlan",
     "FulfillmentSplit",
     "FulfillmentPlanStatus",
+    "ProductPairing",
 ]
