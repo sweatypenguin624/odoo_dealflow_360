@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from app.models import Customer, Product, Quote, QuoteLine
 from app.services.risk_engine import LineInput
 from app.services.fulfillment_engine import LineToFulfill
+from app.services.upsell_engine import QuoteLineForMargin
 
 
 def build_line_inputs(quote_id: int, db: Session, quote: Quote) -> List[LineInput]:
@@ -51,4 +52,29 @@ def build_fulfillment_lines(quote_id: int, db: Session) -> List[LineToFulfill]:
             quantity_needed=line.quantity,
         )
         for line in lines
+    ]
+
+
+def build_margin_lines(quote_id: int, db: Session) -> List[QuoteLineForMargin]:
+    """
+    Loads a quote's lines and builds QuoteLineForMargin objects for the
+    upsell/margin engine (price + unit_margin_pct from the joined Product).
+    """
+    lines = (
+        db.query(QuoteLine, Product)
+        .join(Product, QuoteLine.product_id == Product.id)
+        .filter(QuoteLine.quote_id == quote_id)
+        .all()
+    )
+
+    return [
+        QuoteLineForMargin(
+            quote_line_id=quote_line.id,
+            product_id=quote_line.product_id,
+            price=product.price,
+            quantity=quote_line.quantity,
+            discount_pct=quote_line.discount_pct,
+            unit_margin_pct=product.unit_margin_pct,
+        )
+        for quote_line, product in lines
     ]
