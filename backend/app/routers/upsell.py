@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.database import SessionLocal
-from app.models import Product, ProductPairing, Quote
+from app.models import Product, ProductPairing, Quote, QuoteLine
 from app.services.quote_loader import build_margin_lines
 from app.services.upsell_engine import (
     CandidateProduct,
@@ -127,3 +127,65 @@ def get_upsell_suggestions(
 
     ranked = rank_upsell_suggestions(current_lines, candidates, min_margin_pct_threshold)
     return ranked[:limit]
+
+
+# ---- Accept suggestion ----
+
+
+class AddSuggestionRequest(BaseModel):
+    product_id: int
+    quantity: int = 1
+
+
+class QuoteLineResponse(BaseModel):
+    id: int
+    quote_id: int
+    product_id: int
+    quantity: int
+    discount_pct: float
+    line_value: float
+
+    class Config:
+        from_attributes = True
+
+
+class AddSuggestionResponse(BaseModel):
+    lines: List[QuoteLineResponse]
+    margin_summary: MarginSummary
+
+
+@router.post(
+    "/quotes/{quote_id}/lines/{line_id}/add-suggestion",
+    response_model=AddSuggestionResponse,
+)
+def add_suggestion(
+    quote_id: int, line_id: int, payload: AddSuggestionRequest, db: Session = Depends(get_db)
+):
+    quote = db.get(Quote, quote_id)
+    if quote is None:
+        raise HTTPException(status_code=404, detail="Quote not found")
+
+    origin_line = (
+        db.query(QuoteLine).filter(QuoteLine.id == line_id, QuoteLine.quote_id == quote_id).first()
+    )
+    if origin_line is None:
+        raise HTTPException(status_code=404, detail="Quote line not found on this quote")
+
+    product = db.get(Product, payload.product_id)
+    if product is None:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    new_line = QuoteLine(
+        quote_id=quote_id,
+        product_id=payload.product_id,
+        quantity=payload.quantity,
+        discount_pct=0,
+        line_value=product.price * payload.quantity,
+    )
+    db.add(new_line)
+    db.commit()
+
+    all_lines = db.query(QuoteLine).filter(QuoteLine.quote_id == quote_id).all()
+    margin_summary = calculate_margin_summary(build_margin_lines(quote_id, db))
+
+    return AddSuggestionResponse(lines=all_lines, margin_summary=margin_summary)
