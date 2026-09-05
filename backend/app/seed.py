@@ -4,22 +4,34 @@ Wipes every table this script touches (in FK-safe order) and inserts a
 small, realistic dataset: two customer tiers, three customers, two
 categories with different discount ceilings, five products split
 across them, two warehouses with stock, one subscription plan, a
-couple of product pairings for upsell suggestions, and three quotes:
+couple of product pairings for upsell suggestions, and a set of quotes
+covering every demo screen:
   - Quote 1 (draft): a Laptop line discount well over its Hardware
     category limit, so submitting it for approval actually routes to
     "manager" - the same Laptop/8-points-over shape used throughout
-    the backend's own test suite.
+    the backend's own test suite. Demo entry point for Flow 1
+    (quotation -> approval -> fulfillment).
   - Quote 2 (draft): entirely within limits, so submitting it
     auto-approves - a contrast case.
   - Quote 3 (approved): one one-time line and one recurring line with
     an active Subscription and an initial invoice BillingEvent
-    already attached, so the billing screen has something to render
-    without having to drive an entire approval chain first.
+    already attached, so the billing screen has real mixed data. Also
+    has a live portal token minted, so it's the fast entry point for
+    Flow 2 (customer negotiation) without walking the approval screen
+    first.
+  - Quote 4 & 5 (confirmed): two prior deals for rep Alice at a normal
+    5% discount, giving the deal-health engine a real baseline.
+  - Quote 6 (approved): another Alice deal at 18% - well above her
+    5% baseline, so the deal-health dashboard's discount-anomaly
+    detector has something real (and "critical") to flag.
+  - Quote 7 (draft): rep Bob, backdated well past the 7-day stall
+    threshold, so the dashboard's "stalled" flag has something to
+    show without waiting on real elapsed time.
 
 Run with: python -m app.seed (from the backend/ directory, venv active)
 """
 
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 
 from app.database import SessionLocal, engine, Base
 from app.models import (
@@ -45,6 +57,7 @@ from app.models import (
     SubscriptionStatus,
     Warehouse,
 )
+from app.services.portal_auth import generate_portal_token
 
 
 def wipe(db):
@@ -229,12 +242,70 @@ def seed():
         )
     )
 
+    # Quote 4 & 5: confirmed history for rep Alice at a normal 5% discount,
+    # so the deal-health engine has a real baseline to compare against
+    # (fewer than 2 confirmed quotes for a rep means it's skipped entirely).
+    quote4 = Quote(customer_id=beta.id, status=QuoteStatus.confirmed, rep_name="Alice")
+    db.add(quote4)
+    db.flush()
+    db.add(QuoteLine(quote_id=quote4.id, product_id=monitor.id, quantity=1, discount_pct=5, line_value=300))
+
+    quote5 = Quote(customer_id=gamma.id, status=QuoteStatus.confirmed, rep_name="Alice")
+    db.add(quote5)
+    db.flush()
+    db.add(QuoteLine(quote_id=quote5.id, product_id=monitor.id, quantity=1, discount_pct=5, line_value=300))
+
+    # Quote 6: another Alice deal, discounted well above her 5% baseline
+    # (18% is 3.6x - past the engine's 2x "critical" threshold), so the
+    # dashboard's discount-anomaly detector has a real, critical example.
+    quote6 = Quote(customer_id=acme.id, status=QuoteStatus.approved, rep_name="Alice")
+    db.add(quote6)
+    db.flush()
+    db.add(
+        QuoteLine(
+            quote_id=quote6.id, product_id=setup_service.id, quantity=1, discount_pct=18, line_value=200
+        )
+    )
+
+    # Quote 7: rep Bob, left untouched well past the 7-day stall threshold
+    # (backdated directly rather than waiting on real elapsed time) so the
+    # dashboard's "stalled" flag has something real to show.
+    stale_timestamp = datetime.now(timezone.utc) - timedelta(days=12)
+    quote7 = Quote(
+        customer_id=beta.id,
+        status=QuoteStatus.draft,
+        rep_name="Bob",
+        created_at=stale_timestamp,
+    )
+    db.add(quote7)
+    db.flush()
+    db.add(QuoteLine(quote_id=quote7.id, product_id=cable.id, quantity=5, discount_pct=0, line_value=100))
+    db.add(
+        AuditLog(
+            quote_id=quote7.id,
+            user="system",
+            action="created",
+            reason="Quote drafted",
+            timestamp=stale_timestamp,
+        )
+    )
+
     db.commit()
 
+    # Quote 3 is already approved, so it's the fast entry point for the
+    # customer-negotiation demo flow without walking the approval screen
+    # first - mint it a live portal token up front.
+    quote3_portal_token = generate_portal_token(quote3.id, gamma.id, db)
+
     print("Seed complete:")
-    print(f"  quote1 (draft, over-limit Laptop):   id={quote1.id}")
-    print(f"  quote2 (draft, within limits):        id={quote2.id}")
-    print(f"  quote3 (approved, has subscription):  id={quote3.id}")
+    print(f"  quote1 (draft, over-limit Laptop):        id={quote1.id}")
+    print(f"  quote2 (draft, within limits):             id={quote2.id}")
+    print(f"  quote3 (approved, has subscription):       id={quote3.id}")
+    print(f"    portal link: /portal/{quote3_portal_token.token}")
+    print(f"  quote4 (confirmed, Alice @ 5%):            id={quote4.id}")
+    print(f"  quote5 (confirmed, Alice @ 5%):             id={quote5.id}")
+    print(f"  quote6 (approved, Alice @ 18% - anomaly):  id={quote6.id}")
+    print(f"  quote7 (draft, Bob, stalled 12 days):      id={quote7.id}")
 
     db.close()
 
