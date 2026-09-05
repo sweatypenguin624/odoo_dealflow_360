@@ -42,3 +42,25 @@ const withToken = (token: string): HeadersInit => ({ "X-Portal-Token": token });
 
 export const getPortalQuote = (token: string) =>
   apiFetch<PortalQuote>("/portal/quote", { method: "GET", headers: withToken(token) });
+
+// ---- GET /products ----
+// Public, unauthenticated lookup (backend/app/routers/catalog.py) - used
+// here only to resolve product_id -> a display name for the portal's line
+// table. Kept minimal and local rather than importing lib/api/catalog.ts,
+// so this file has no dependency on the internal client's endpoint layer.
+
+export interface PortalProductRef {
+  id: number;
+  name: string;
+}
+
+export const listPortalProducts = () => apiFetch<PortalProductRef[]>("/products", { method: "GET" });
+
+// ---- POST /portal/lines/{line_id}/comment ----
+
+export const submitPortalComment = (token: string, lineId: number, comment: string) =>
+  apiFetch<PortalLineComment>(`/portal/lines/${lineId}/comment`, {
+    method: "POST",
+    body: { comment },
+    headers: withToken(token),
+  });
