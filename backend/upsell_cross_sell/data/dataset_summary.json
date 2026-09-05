@@ -1,0 +1,272 @@
+{
+  "generated_at": "2026-09-05T17:02:07.488184",
+  "seed": 42,
+  "configuration": {
+    "num_customers": 10000,
+    "num_invoices": 50000
+  },
+  "dataset_stats": {
+    "num_customers": 10000,
+    "num_products": 343,
+    "num_invoices": 50000,
+    "num_invoice_items": 134470,
+    "avg_invoice_value": 80443.24,
+    "avg_products_per_invoice": 2.69,
+    "total_revenue": 4022161992.03,
+    "total_margin": 1713446916.56,
+    "margin_percent": 42.6
+  },
+  "customer_tier_distribution": {
+    "Bronze": 3141,
+    "Silver": 5283,
+    "Gold": 1576
+  },
+  "top_20_products": [
+    {
+      "product_id": 134,
+      "product_name": "Keyboard Membrane Dell",
+      "quantity": 1392
+    },
+    {
+      "product_id": 124,
+      "product_name": "Keyboard Mechanical Logitech",
+      "quantity": 1389
+    },
+    {
+      "product_id": 148,
+      "product_name": "Mic Wireless Logitech",
+      "quantity": 1354
+    },
+    {
+      "product_id": 127,
+      "product_name": "Keyboard Membrane Dell",
+      "quantity": 1328
+    },
+    {
+      "product_id": 129,
+      "product_name": "Keyboard Membrane Logitech",
+      "quantity": 1303
+    },
+    {
+      "product_id": 144,
+      "product_name": "Mic Wireless Corsair",
+      "quantity": 1264
+    },
+    {
+      "product_id": 136,
+      "product_name": "Mic Wireless Logitech",
+      "quantity": 1261
+    },
+    {
+      "product_id": 135,
+      "product_name": "Keyboard Membrane Logitech",
+      "quantity": 1251
+    },
+    {
+      "product_id": 153,
+      "product_name": "Mic Wired Logitech",
+      "quantity": 1246
+    },
+    {
+      "product_id": 159,
+      "product_name": "Mic Wired Dell",
+      "quantity": 1241
+    },
+    {
+      "product_id": 147,
+      "product_name": "Mic Wireless Corsair",
+      "quantity": 1235
+    },
+    {
+      "product_id": 120,
+      "product_name": "Keyboard Mechanical Corsair",
+      "quantity": 1231
+    },
+    {
+      "product_id": 118,
+      "product_name": "Keyboard Mechanical Corsair",
+      "quantity": 1230
+    },
+    {
+      "product_id": 117,
+      "product_name": "Keyboard Mechanical Logitech",
+      "quantity": 1227
+    },
+    {
+      "product_id": 155,
+      "product_name": "Mic Wired Dell",
+      "quantity": 1218
+    },
+    {
+      "product_id": 132,
+      "product_name": "Keyboard Membrane Dell",
+      "quantity": 1212
+    },
+    {
+      "product_id": 157,
+      "product_name": "Mic Wired Dell",
+      "quantity": 1210
+    },
+    {
+      "product_id": 138,
+      "product_name": "Mic Wireless Corsair",
+      "quantity": 1208
+    },
+    {
+      "product_id": 149,
+      "product_name": "Mic Wireless Logitech",
+      "quantity": 1188
+    },
+    {
+      "product_id": 140,
+      "product_name": "Mic Wireless Logitech",
+      "quantity": 1185
+    }
+  ],
+  "top_product_pairs": [
+    {
+      "product_pair": [
+        312,
+        320
+      ],
+      "co_occurrences": 25
+    },
+    {
+      "product_pair": [
+        282,
+        312
+      ],
+      "co_occurrences": 25
+    },
+    {
+      "product_pair": [
+        289,
+        306
+      ],
+      "co_occurrences": 24
+    },
+    {
+      "product_pair": [
+        281,
+        318
+      ],
+      "co_occurrences": 24
+    },
+    {
+      "product_pair": [
+        299,
+        321
+      ],
+      "co_occurrences": 23
+    },
+    {
+      "product_pair": [
+        310,
+        321
+      ],
+      "co_occurrences": 23
+    },
+    {
+      "product_pair": [
+        288,
+        310
+      ],
+      "co_occurrences": 23
+    },
+    {
+      "product_pair": [
+        299,
+        306
+      ],
+      "co_occurrences": 23
+    },
+    {
+      "product_pair": [
+        298,
+        322
+      ],
+      "co_occurrences": 22
+    },
+    {
+      "product_pair": [
+        315,
+        323
+      ],
+      "co_occurrences": 22
+    },
+    {
+      "product_pair": [
+        308,
+        322
+      ],
+      "co_occurrences": 22
+    },
+    {
+      "product_pair": [
+        307,
+        322
+      ],
+      "co_occurrences": 21
+    },
+    {
+      "product_pair": [
+        312,
+        322
+      ],
+      "co_occurrences": 21
+    },
+    {
+      "product_pair": [
+        286,
+        318
+      ],
+      "co_occurrences": 21
+    },
+    {
+      "product_pair": [
+        308,
+        324
+      ],
+      "co_occurrences": 21
+    },
+    {
+      "product_pair": [
+        306,
+        318
+      ],
+      "co_occurrences": 21
+    },
+    {
+      "product_pair": [
+        131,
+        159
+      ],
+      "co_occurrences": 21
+    },
+    {
+      "product_pair": [
+        299,
+        324
+      ],
+      "co_occurrences": 21
+    },
+    {
+      "product_pair": [
+        305,
+        323
+      ],
+      "co_occurrences": 21
+    },
+    {
+      "product_pair": [
+        306,
+        319
+      ],
+      "co_occurrences": 21
+    }
+  ],
+  "validation": {
+    "valid": true,
+    "errors": []
+  }
+}
