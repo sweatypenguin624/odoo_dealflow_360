@@ -25,6 +25,7 @@ class Quote(Base):
     required_approval_level = Column(String, nullable=True)
     current_approval_step = Column(String, nullable=True)
     risk_reasons = Column(JSON, nullable=True)
+    rep_name = Column(String, nullable=True)
 
     customer = relationship("Customer")
     lines = relationship("QuoteLine", back_populates="quote")
