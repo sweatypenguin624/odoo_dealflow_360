@@ -13,10 +13,12 @@ export function proxy(request: NextRequest) {
     login.searchParams.set("next", pathname);
     return NextResponse.redirect(login);
   }
-  if (pathname === "/login" && hasSession) {
-    return NextResponse.redirect(new URL("/", request.url));
-  }
+  // /login is deliberately NOT redirected here. df_csrf outlives the session
+  // cookie by days, so "has a cookie" is not "is signed in": bouncing /login to
+  // / on that evidence loops forever against the client guards, which send an
+  // unauthenticated visitor straight back to /login. The login page itself
+  // redirects when it sees a session that is genuinely live.
   return NextResponse.next();
 }
 
-export const config = { matcher: ["/workspace/:path*", "/admin/:path*", "/portal", "/login"] };
+export const config = { matcher: ["/workspace/:path*", "/admin/:path*", "/portal"] };

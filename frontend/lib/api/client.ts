@@ -5,7 +5,28 @@
 // - On a 401 it tries one silent refresh (POST /auth/refresh) and replays.
 // - Normalises every backend error into ApiError with a human message.
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const CONFIGURED_API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+
+const LOOPBACK = new Set(["localhost", "127.0.0.1", "[::1]", "::1"]);
+
+/**
+ * The API origin, pinned to the hostname the page itself was opened with.
+ *
+ * Session cookies are scoped by host, not by port, and "localhost" and
+ * "127.0.0.1" are different sites to a browser. A page served from
+ * localhost:3000 that calls 127.0.0.1:8000 is making a cross-site request, so
+ * the SameSite=Lax session cookie is neither stored nor sent: sign-in returns
+ * 200 and you land straight back on the login form. Both names reach the same
+ * dev server, so follow whichever one is in the address bar and the two always
+ * agree. Anything that isn't loopback (a real deployment) is left untouched.
+ */
+function apiBaseUrl(): string {
+  if (typeof window === "undefined") return CONFIGURED_API_URL;
+  const api = new URL(CONFIGURED_API_URL, window.location.origin);
+  const page = window.location.hostname;
+  if (api.hostname !== page && LOOPBACK.has(api.hostname) && LOOPBACK.has(page)) api.hostname = page;
+  return api.origin;
+}
 const CSRF_COOKIE = "df_csrf";
 const CSRF_HEADER = "X-CSRF-Token";
 
@@ -52,7 +73,7 @@ export function readCookie(name: string): string | null {
 export type Query = Record<string, string | number | boolean | undefined | null>;
 
 export function buildUrl(path: string, query?: Query): string {
-  const url = new URL(path, API_BASE_URL);
+  const url = new URL(path, apiBaseUrl());
   if (query) {
     for (const [key, value] of Object.entries(query)) {
       if (value !== undefined && value !== null && value !== "") url.searchParams.set(key, String(value));

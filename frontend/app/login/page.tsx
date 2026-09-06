@@ -1,23 +1,34 @@
 "use client";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { FormEvent, Suspense, useState } from "react";
+import { FormEvent, Suspense, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { errorMessage } from "@/lib/api/client";
-import { landingFor } from "@/lib/rbac";
+import { homeFor, landingFor } from "@/lib/rbac";
 import { Button, Field, FormError, Input } from "@/components/ui";
 
 function LoginForm() {
-  const { login } = useAuth();
+  const { login, user, loading: sessionLoading } = useAuth();
   const router = useRouter();
   const params = useSearchParams();
+  const submitted = useRef(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // Someone who is already signed in has no business on this form. This lives
+  // here rather than in the proxy because only a live /auth/me can tell a real
+  // session from a leftover cookie - and it knows the role, so a customer goes
+  // to the portal instead of a workspace they cannot open.
+  useEffect(() => {
+    if (sessionLoading || !user || submitted.current) return;
+    router.replace(homeFor(user.role));
+  }, [sessionLoading, user, router]);
+
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
+    submitted.current = true;
     setLoading(true);
     setError(null);
     try {
