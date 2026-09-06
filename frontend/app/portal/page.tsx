@@ -1,23 +1,41 @@
 "use client";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { portalApi } from "@/lib/api/portal";
 import { useApi } from "@/lib/hooks/useApi";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { Badge, EmptyState, ErrorState, PageHeader, Pagination, Skeleton, StatusBadge } from "@/components/ui";
+import { RequireCustomer } from "@/components/shell/RequireAuth";
 
 export default function PortalHomePage() {
+  return (
+    <RequireCustomer>
+      <PortalQuoteList />
+    </RequireCustomer>
+  );
+}
+
+function PortalQuoteList() {
   const { user, logout } = useAuth();
+  const router = useRouter();
   const [page, setPage] = useState(1);
   const { data, error, loading, reload } = useApi(() => portalApi.myQuotes(page), [page]);
+
+  // Signing out has to leave the portal: staying here would keep the previous
+  // customer's quotations on screen with no session behind them.
+  async function handleLogout() {
+    await logout();
+    router.replace("/login");
+  }
 
   return (
     <div className="space-y-5">
       <PageHeader
         title="Your quotations"
         subtitle={user ? `Signed in as ${user.full_name}` : undefined}
-        actions={user && <button onClick={() => logout()} className="rounded-md border border-zinc-300 px-2.5 py-1 text-xs text-zinc-700 hover:bg-zinc-50">Sign out</button>}
+        actions={user && <button onClick={handleLogout} className="rounded-md border border-zinc-300 px-2.5 py-1 text-xs text-zinc-700 hover:bg-zinc-50">Sign out</button>}
       />
 
       {error && <ErrorState message={error} onRetry={reload} />}

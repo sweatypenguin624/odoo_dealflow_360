@@ -4,7 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, Suspense, useState } from "react";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { errorMessage } from "@/lib/api/client";
-import { homeFor } from "@/lib/rbac";
+import { landingFor } from "@/lib/rbac";
 import { Button, Field, FormError, Input } from "@/components/ui";
 
 function LoginForm() {
@@ -22,8 +22,7 @@ function LoginForm() {
     setError(null);
     try {
       const user = await login(email, password);
-      const next = params.get("next");
-      router.replace(next && user.role !== "customer" ? next : homeFor(user.role));
+      router.replace(landingFor(user.role, params.get("next")));
     } catch (err) {
       setError(errorMessage(err, "Sign-in failed."));
     } finally {

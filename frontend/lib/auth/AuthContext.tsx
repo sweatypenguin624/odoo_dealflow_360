@@ -23,6 +23,8 @@ interface AuthContextValue {
   user: SessionUser | null;
   permissions: Set<string>;
   loading: boolean;
+  /** True after an explicit sign-out, false for a session that simply isn't there. */
+  signedOut: boolean;
   can: (permission: string) => boolean;
   hasRole: (...roles: Role[]) => boolean;
   login: (email: string, password: string) => Promise<SessionUser>;
@@ -36,6 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<SessionUser | null>(null);
   const [permissions, setPermissions] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [signedOut, setSignedOut] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
@@ -68,6 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(session.user);
     setPermissions(new Set(session.permissions));
     setLoading(false);
+    setSignedOut(false);
     return session.user;
   }, []);
 
@@ -77,6 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setUser(null);
       setPermissions(new Set());
+      setSignedOut(true);
     }
   }, []);
 
@@ -85,13 +90,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       permissions,
       loading,
+      signedOut,
       can: (p) => permissions.has(p),
       hasRole: (...roles) => !!user && roles.includes(user.role),
       login,
       logout,
       refresh,
     }),
-    [user, permissions, loading, login, logout, refresh],
+    [user, permissions, loading, signedOut, login, logout, refresh],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

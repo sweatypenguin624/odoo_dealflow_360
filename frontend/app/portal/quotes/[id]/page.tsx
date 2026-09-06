@@ -5,10 +5,19 @@ import { portalApi } from "@/lib/api/portal";
 import { useApi } from "@/lib/hooks/useApi";
 import { ErrorState, Skeleton } from "@/components/ui";
 import { PortalQuoteView } from "@/components/domain/PortalQuoteView";
+import { RequireCustomer } from "@/components/shell/RequireAuth";
 
 /** Signed-in customer view. Authorisation is by session, not a link token. */
 export default function PortalQuotePage({ params }: { params: Promise<{ id: string }> }) {
   const quoteId = Number(use(params).id);
+  return (
+    <RequireCustomer staffHref={`/workspace/quotations/${quoteId}`}>
+      <CustomerQuote quoteId={quoteId} />
+    </RequireCustomer>
+  );
+}
+
+function CustomerQuote({ quoteId }: { quoteId: number }) {
   const { data, error, loading, reload } = useApi(() => portalApi.quote(null, quoteId), [quoteId]);
 
   if (loading && !data) return <Skeleton className="h-64" />;

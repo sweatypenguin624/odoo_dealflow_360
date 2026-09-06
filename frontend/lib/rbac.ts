@@ -87,3 +87,30 @@ export function homeFor(role: Role | null): string {
   if (role === "customer") return "/portal";
   return "/workspace/dashboard";
 }
+
+// Which roles may land in each area of the app. This mirrors the role lists on
+// the area layouts (and the backend's own checks); it exists so a redirect can
+// be vetted *before* we navigate somewhere the user will only be bounced from.
+const AREAS: { prefix: string; roles: Role[] }[] = [
+  { prefix: "/admin", roles: ["admin", "sales_manager", "finance"] },
+  { prefix: "/workspace", roles: ["admin", "sales_manager", "sales_rep", "finance"] },
+  { prefix: "/portal", roles: ["customer"] },
+];
+
+export function canEnter(role: Role, path: string): boolean {
+  const area = AREAS.find((a) => path === a.prefix || path.startsWith(`${a.prefix}/`));
+  return !area || area.roles.includes(role);
+}
+
+/**
+ * Where to send someone who has just signed in.
+ *
+ * `next` is whatever was on the login URL, which may have been stamped there by
+ * a *different* session (sign out of /admin/users and the next person to sign
+ * in inherits it). Honour it only when this role can actually open it, and only
+ * when it is a local path - never an absolute URL.
+ */
+export function landingFor(role: Role, next: string | null | undefined): string {
+  if (next && next.startsWith("/") && !next.startsWith("//") && canEnter(role, next)) return next;
+  return homeFor(role);
+}
