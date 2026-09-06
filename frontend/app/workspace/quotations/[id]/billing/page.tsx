@@ -1,317 +1,143 @@
 "use client";
-
 import Link from "next/link";
-import { use, useEffect, useMemo, useState } from "react";
-import {
-  ApiError,
-  cancelSubscription,
-  changeSubscriptionQuantity,
-  generateRecurringInvoice,
-  getBillingSummary,
-  listProducts,
-} from "@/lib/api";
-import type { BillingSummary, ProductRef, RecurringLine } from "@/lib/api";
-import { useReload } from "@/lib/reload-context";
+import { use, useState } from "react";
+import { invoices, quotes } from "@/lib/api";
+import { errorMessage } from "@/lib/api/client";
+import { useApi } from "@/lib/hooks/useApi";
+import { useAuth } from "@/lib/auth/AuthContext";
+import { formatCurrency, formatDate, titleCase } from "@/lib/format";
+import { Badge, Button, Card, ErrorState, LinkButton, PageHeader, Skeleton, StatusBadge } from "@/components/ui";
+import { useToast } from "@/components/ui/Toast";
 
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amount);
-}
-
-function todayIsoDate(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
-interface ActionResult {
-  amount: number;
-  description: string;
-}
-
-function RecurringLineCard({
-  line,
-  productName,
-  onChanged,
-}: {
-  line: RecurringLine;
-  productName: string;
-  onChanged: (result: ActionResult) => void;
-}) {
-  const [newQuantity, setNewQuantity] = useState(line.quantity);
-  const [changeDate, setChangeDate] = useState(todayIsoDate);
+export default function QuoteBillingPage({ params }: { params: Promise<{ id: string }> }) {
+  const quoteId = Number(use(params).id);
+  const { can } = useAuth();
+  const toast = useToast();
+  const quote = useApi(() => quotes.get(quoteId), [quoteId]);
+  const summary = useApi(() => quotes.billingSummary(quoteId), [quoteId]);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [generatedInvoiceId, setGeneratedInvoiceId] = useState<number | null>(null);
 
-  async function handleQuantityChange() {
+  async function generate() {
     setBusy(true);
-    setError(null);
     try {
-      const result = await changeSubscriptionQuantity(line.subscription_id, {
-        new_quantity: newQuantity,
-        change_date: changeDate,
-      });
-      onChanged({ amount: result.billing_event.amount, description: result.billing_event.description });
+      const inv = await invoices.generate(quoteId);
+      toast.success(`Invoice ${inv.invoice_number} created.`);
+      summary.reload();
+      quote.reload();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to change quantity");
+      toast.error(errorMessage(err));
     } finally {
       setBusy(false);
     }
   }
 
-  async function handleCancel() {
-    setBusy(true);
-    setError(null);
-    try {
-      const result = await cancelSubscription(line.subscription_id, { cancellation_date: changeDate });
-      onChanged({ amount: result.billing_event.amount, description: result.billing_event.description });
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to cancel subscription");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function handleGenerateInvoice() {
-    setBusy(true);
-    setError(null);
-    try {
-      const invoice = await generateRecurringInvoice(line.subscription_id);
-      setGeneratedInvoiceId(invoice.id);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to generate invoice");
-    } finally {
-      setBusy(false);
-    }
-  }
+  if (quote.error) return <ErrorState message={quote.error} onRetry={quote.reload} />;
+  if (!quote.data) return <Skeleton className="h-64" />;
+  const q = quote.data;
+  const s = summary.data;
 
   return (
-    <div className="rounded-lg border border-purple-200 bg-purple-50 p-4 dark:border-purple-900 dark:bg-purple-950/30">
-      <div className="flex items-center justify-between">
-        <p className="font-medium text-zinc-900 dark:text-zinc-50">{productName}</p>
-        <span className="rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-medium text-purple-800 dark:bg-purple-900/40 dark:text-purple-300">
-          {line.status}
-        </span>
-      </div>
-      <p className="text-sm text-zinc-600 dark:text-zinc-400">
-        Quantity: {line.quantity} · Cycle: {line.current_cycle_start} → {line.current_cycle_end}
-      </p>
-
-      <div className="mt-3 overflow-x-auto rounded border border-zinc-200 dark:border-zinc-800">
-        <table className="w-full text-xs">
-          <thead className="bg-zinc-50 text-left uppercase text-zinc-500 dark:bg-zinc-900 dark:text-zinc-400">
-            <tr>
-              <th className="px-3 py-1.5">Date</th>
-              <th className="px-3 py-1.5">Type</th>
-              <th className="px-3 py-1.5">Amount</th>
-              <th className="px-3 py-1.5">Description</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-            {line.billing_events.map((event) => (
-              <tr key={event.id} className="bg-white dark:bg-zinc-950">
-                <td className="px-3 py-1.5">{event.event_date}</td>
-                <td className="px-3 py-1.5">{event.event_type}</td>
-                <td
-                  className={`px-3 py-1.5 ${event.amount < 0 ? "text-green-600 dark:text-green-400" : ""}`}
-                >
-                  {formatCurrency(event.amount)}
-                </td>
-                <td className="px-3 py-1.5">{event.description}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {line.status === "active" && (
-        <div className="mt-3 flex flex-wrap items-end gap-2">
-          <div>
-            <label className="block text-xs text-zinc-500 dark:text-zinc-400">New Quantity</label>
-            <input
-              type="number"
-              min={1}
-              value={newQuantity}
-              onChange={(e) => setNewQuantity(Number(e.target.value))}
-              className="w-20 rounded border border-zinc-300 px-2 py-1 text-sm dark:border-zinc-700 dark:bg-zinc-900"
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-zinc-500 dark:text-zinc-400">Effective Date</label>
-            <input
-              type="date"
-              value={changeDate}
-              onChange={(e) => setChangeDate(e.target.value)}
-              className="rounded border border-zinc-300 px-2 py-1 text-sm dark:border-zinc-700 dark:bg-zinc-900"
-            />
-          </div>
-          <button
-            onClick={handleQuantityChange}
-            disabled={busy}
-            className="rounded bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-          >
-            Change Quantity
-          </button>
-          <button
-            onClick={handleCancel}
-            disabled={busy}
-            className="rounded bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
-          >
-            Cancel Subscription
-          </button>
-          <button
-            onClick={handleGenerateInvoice}
-            disabled={busy}
-            className="rounded bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
-          >
-            Generate Invoice
-          </button>
-        </div>
-      )}
-      {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
-      {generatedInvoiceId !== null && (
-        <p className="mt-2 text-sm text-green-700 dark:text-green-400">
-          Invoice created.{" "}
-          <Link href={`/workspace/invoices/${generatedInvoiceId}`} className="underline">
-            View invoice
-          </Link>
-        </p>
-      )}
-    </div>
-  );
-}
-
-export default function BillingPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
-  const quoteId = Number(id);
-  const { reloadNonce } = useReload();
-
-  const [summary, setSummary] = useState<BillingSummary | null>(null);
-  const [products, setProducts] = useState<ProductRef[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [lastActionResult, setLastActionResult] = useState<ActionResult | null>(null);
-
-  const productById = useMemo(() => {
-    const map = new Map<number, ProductRef>();
-    for (const product of products) map.set(product.id, product);
-    return map;
-  }, [products]);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function load() {
-      setError(null);
-      try {
-        const [billingSummary, productList] = await Promise.all([
-          getBillingSummary(quoteId),
-          listProducts(),
-        ]);
-        if (!cancelled) {
-          setSummary(billingSummary);
-          setProducts(productList);
+    <div className="space-y-5">
+      <PageHeader
+        breadcrumb={{ href: `/workspace/quotations/${quoteId}`, label: "Quotation" }}
+        title={<span className="flex flex-wrap items-center gap-2">{q.order_number ?? q.quote_number} <StatusBadge status={q.billing_status} /></span>}
+        subtitle={<><Link href={`/workspace/customers/${q.customer_id}`} className="link">{q.customer_name}</Link> · order total {formatCurrency(q.total)}</>}
+        actions={
+          <>
+            {can("invoice:manage") && q.status === "confirmed" && <Button onClick={generate} loading={busy}>Invoice shipped items</Button>}
+            <LinkButton href={`/workspace/quotations/${quoteId}/fulfillment`}>Fulfillment →</LinkButton>
+          </>
         }
-      } catch (err) {
-        if (!cancelled) {
-          setError(err instanceof ApiError ? err.message : "Failed to load billing summary");
-        }
-      }
-    }
+      />
 
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, [quoteId, reloadNonce]);
-
-  async function refetchSummary() {
-    try {
-      setSummary(await getBillingSummary(quoteId));
-    } catch {
-      // Keep showing the last-known summary rather than blanking the page.
-    }
-  }
-
-  function handleActionResult(result: ActionResult) {
-    setLastActionResult(result);
-    refetchSummary();
-  }
-
-  if (error) return <p className="text-red-600 dark:text-red-400">Error: {error}</p>;
-  if (summary === null) return <p className="text-zinc-500 dark:text-zinc-400">Loading…</p>;
-
-  return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <Link
-          href={`/workspace/quotations/${quoteId}`}
-          className="text-sm text-blue-600 hover:underline dark:text-blue-400"
-        >
-          ← Back to Quote #{quoteId}
-        </Link>
-        <h1 className="mt-2 text-xl font-semibold text-zinc-900 dark:text-zinc-50">Billing</h1>
-      </div>
-
-      {lastActionResult && (
-        <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-900 dark:bg-blue-950/40">
-          <p className="font-semibold text-blue-900 dark:text-blue-200">
-            {formatCurrency(lastActionResult.amount)}
-          </p>
-          <p className="text-sm text-blue-800 dark:text-blue-300">{lastActionResult.description}</p>
+      {q.status !== "confirmed" && (
+        <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+          This quotation isn&apos;t confirmed yet, so nothing can be invoiced. Confirm the order first.
         </div>
       )}
 
-      <section>
-        <h2 className="mb-2 text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-          One-Time Lines
-        </h2>
-        {summary.one_time_lines.length === 0 ? (
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">None.</p>
-        ) : (
-          <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
-            <table className="w-full text-sm">
-              <thead className="bg-zinc-50 text-left text-xs uppercase text-zinc-500 dark:bg-zinc-900 dark:text-zinc-400">
-                <tr>
-                  <th className="px-4 py-2">Product</th>
-                  <th className="px-4 py-2">Quantity</th>
-                  <th className="px-4 py-2">Discount %</th>
-                  <th className="px-4 py-2">Line Value</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                {summary.one_time_lines.map((line) => (
-                  <tr key={line.quote_line_id} className="bg-white dark:bg-zinc-950">
-                    <td className="px-4 py-2">
-                      {productById.get(line.product_id)?.name ?? `Product #${line.product_id}`}
-                    </td>
-                    <td className="px-4 py-2">{line.quantity}</td>
-                    <td className="px-4 py-2">{line.discount_pct}%</td>
-                    <td className="px-4 py-2">{formatCurrency(line.line_value)}</td>
-                  </tr>
+      {summary.error && <ErrorState message={summary.error} onRetry={summary.reload} />}
+      {!s && !summary.error && <Skeleton className="h-40" />}
+
+      {s && (
+        <>
+          <Card title="One-time lines" padded={false}>
+            {s.one_time_lines.length === 0 ? <p className="p-4 text-sm text-zinc-500">No one-time products on this order.</p> : (
+              <table className="w-full text-sm">
+                <thead className="bg-zinc-50 text-left text-xs uppercase text-zinc-500">
+                  <tr><th className="px-4 py-2">Product</th><th className="px-2 py-2 text-right">Qty</th><th className="px-2 py-2 text-right">Discount</th><th className="px-2 py-2 text-right">Line value</th><th className="px-2 py-2 text-right">Line total</th></tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-100">
+                  {s.one_time_lines.map((l) => (
+                    <tr key={l.quote_line_id}>
+                      <td className="px-4 py-2">{l.product_name}</td>
+                      <td className="px-2 py-2 text-right">{l.quantity}</td>
+                      <td className="px-2 py-2 text-right">{Number(l.discount_pct).toFixed(1)}%</td>
+                      <td className="px-2 py-2 text-right tabular-nums">{formatCurrency(l.line_value)}</td>
+                      <td className="px-2 py-2 text-right tabular-nums">{formatCurrency(l.line_total)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </Card>
+
+          <Card title="Recurring lines">
+            {s.recurring_lines.length === 0 ? <p className="text-sm text-zinc-500">No subscriptions on this order.</p> : (
+              <ul className="space-y-3">
+                {s.recurring_lines.map((r) => (
+                  <li key={r.quote_line_id} className="rounded-md border border-zinc-200 p-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <p className="font-medium text-zinc-900">
+                          <Link href={`/workspace/subscriptions/${r.subscription_id}`} className="link">{r.plan_name}</Link>
+                          <span className="ml-1 text-xs text-zinc-500">{r.product_name} · {r.quantity} ×</span>
+                        </p>
+                        <p className="text-xs text-zinc-500">
+                          Cycle {formatDate(r.current_cycle_start)} – {formatDate(r.current_cycle_end)} · next billing {formatDate(r.next_billing_date)}
+                        </p>
+                      </div>
+                      <StatusBadge status={r.status} />
+                    </div>
+                    {r.billing_events.length > 0 && (
+                      <ul className="mt-2 space-y-0.5 text-xs text-zinc-600">
+                        {r.billing_events.map((e) => (
+                          <li key={e.id} className="flex justify-between gap-2">
+                            <span><Badge tone="neutral">{titleCase(e.event_type)}</Badge> {e.description}</span>
+                            <span className="tabular-nums">{formatCurrency(e.amount)} · {formatDate(e.event_date)}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </li>
                 ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+              </ul>
+            )}
+          </Card>
 
-      <section>
-        <h2 className="mb-2 text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-          Recurring Lines
-        </h2>
-        {summary.recurring_lines.length === 0 ? (
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">None.</p>
-        ) : (
-          <div className="flex flex-col gap-4">
-            {summary.recurring_lines.map((line) => (
-              <RecurringLineCard
-                key={line.quote_line_id}
-                line={line}
-                productName={productById.get(line.product_id)?.name ?? `Product #${line.product_id}`}
-                onChanged={handleActionResult}
-              />
-            ))}
-          </div>
-        )}
-      </section>
+          <Card title="Invoices" padded={false}>
+            {s.invoices.length === 0 ? <p className="p-4 text-sm text-zinc-500">Nothing invoiced yet.</p> : (
+              <table className="w-full text-sm">
+                <thead className="bg-zinc-50 text-left text-xs uppercase text-zinc-500">
+                  <tr><th className="px-4 py-2">Invoice</th><th className="px-2 py-2">Status</th><th className="px-2 py-2">Period</th><th className="px-2 py-2 text-right">Amount</th><th className="px-2 py-2 text-right">Paid</th><th className="px-2 py-2">Due</th></tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-100">
+                  {s.invoices.map((i) => (
+                    <tr key={i.id}>
+                      <td className="px-4 py-2"><Link href={`/workspace/invoices/${i.id}`} className="link font-medium">{i.invoice_number}</Link></td>
+                      <td className="px-2 py-2"><StatusBadge status={i.status} /></td>
+                      <td className="px-2 py-2 text-xs">{i.billing_period_start ? `${formatDate(i.billing_period_start)} – ${formatDate(i.billing_period_end)}` : "—"}</td>
+                      <td className="px-2 py-2 text-right tabular-nums">{formatCurrency(i.amount)}</td>
+                      <td className="px-2 py-2 text-right tabular-nums">{formatCurrency(i.amount_paid)}</td>
+                      <td className="px-2 py-2 text-xs">{formatDate(i.due_date)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </Card>
+        </>
+      )}
     </div>
   );
 }

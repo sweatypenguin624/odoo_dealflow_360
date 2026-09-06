@@ -34,20 +34,33 @@ def test_stalled_draft_quote_is_flagged_fresh_one_is_not():
     assert flags[0].flag_type == "stalled"
 
 
-def test_approved_and_confirmed_quotes_are_never_flagged_as_stalled():
+def test_confirmed_and_terminal_quotes_are_never_flagged_as_stalled():
+    """Only quotes that still need someone to act on them can stall. A
+    confirmed order or a rejected/cancelled quote is never 'stalled', no
+    matter how old. (An *approved* quote that nobody has sent to the
+    customer IS stalled - that is a real rep action waiting to happen.)"""
     as_of = date(2026, 1, 20)
-    approved = QuoteActivitySnapshot(
-        quote_id=3,
-        customer_name="Gamma",
-        status="approved",
-        last_updated_at=date(2025, 1, 1),  # very old, but not draft/pending
-        rep_name="Alice",
-        applied_discount_pct=5,
+
+    def snapshot(quote_id, status):
+        return QuoteActivitySnapshot(
+            quote_id=quote_id,
+            customer_name="Gamma",
+            status=status,
+            last_updated_at=date(2025, 1, 1),  # very old
+            rep_name="Alice",
+            applied_discount_pct=5,
+        )
+
+    flags = detect_stalled_deals(
+        [snapshot(3, "confirmed"), snapshot(4, "rejected"), snapshot(5, "cancelled"), snapshot(6, "expired")],
+        as_of=as_of,
+        stall_threshold_days=7,
     )
-
-    flags = detect_stalled_deals([approved], as_of=as_of, stall_threshold_days=7)
-
     assert flags == []
+
+    approved_unsent = detect_stalled_deals([snapshot(7, "approved")], as_of=as_of, stall_threshold_days=7)
+    assert len(approved_unsent) == 1
+    assert approved_unsent[0].severity == "critical"  # > 3x the threshold
 
 
 def test_discount_far_above_average_is_critical():

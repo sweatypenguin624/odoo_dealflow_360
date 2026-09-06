@@ -1,334 +1,246 @@
+"""Customer portal + negotiation loop.
+
+Ported from the original suite (token validation, 403 for unsent quotes,
+downgrade auto-apply, within-limit auto-apply, over-limit re-approval,
+manager approval then confirm, confirm-while-pending guard, foreign-line
+rejection) with the new state machine: quotes must be *sent* to be
+visible, negotiated terms return the quote to the customer, and the
+customer view never exposes internal data.
+"""
+
 from datetime import datetime, timedelta, timezone
 
-import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
-
-from app.main import app
-from app.database import Base
-from app.models import (
-    AuditLog,
-    Category,
-    CounterProposal,
-    Customer,
-    CustomerTier,
-    PortalToken,
-    Product,
-    Quote,
-    QuoteLine,
-    QuoteStatus,
-)
-from app.dependencies.portal import get_db as portal_get_db
-from app.routers.quotes import get_db as quotes_get_db
+from app.models import AuditLog, CounterProposal, PortalToken, QuoteLine, QuoteStatus
 from app.services.portal_auth import generate_portal_token
-
-SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
-
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL,
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool,
-)
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+from tests.conftest import make_quote
 
 
-def override_get_db():
-    try:
-        db = TestingSessionLocal()
-        yield db
-    finally:
-        db.close()
+def sent_quote(db, discount_laptop=5, discount_setup=0, status="sent"):
+    return make_quote(db, [(1, 1, discount_laptop), (2, 1, discount_setup)], status=status)
 
 
-# Only override this file's own dependency key at module scope. The
-# internal quotes router's get_db is borrowed only within the one test
-# that needs it (test 6), and popped immediately after, so it never
-# leaks into other test files that also use quotes.get_db.
-app.dependency_overrides[portal_get_db] = override_get_db
-client = TestClient(app)
+def token_for(db, quote_id, **kwargs):
+    return generate_portal_token(quote_id, 1, db, **kwargs).token
 
 
-@pytest.fixture(autouse=True)
-def setup_db():
-    Base.metadata.create_all(bind=engine)
-    db = TestingSessionLocal()
+def headers(token):
+    return {"X-Portal-Token": token}
 
-    # Same numbers as Phase 2/3's existing risk_engine / approval_workflow
-    # tests, reused deliberately to prove this phase calls the same engine.
-    tier = CustomerTier(id=1, name="Gold", max_discount_pct=15)
-    db.add(tier)
 
-    customer = Customer(id=1, name="Test Corp", tier_id=1)
-    db.add(customer)
+def test_valid_token_grants_access_invalid_token_401(client, db):
+    quote_id = sent_quote(db)
+    token = token_for(db, quote_id)
+    ok = client.get("/portal/quote", headers=headers(token))
+    assert ok.status_code == 200, ok.text
+    assert ok.json()["quote_id"] == quote_id
+    assert ok.json()["status"] == "Sent"
+    assert client.get("/portal/quote", headers=headers("garbage")).status_code == 401
+    assert client.get("/portal/quote").status_code == 401
 
-    cat_hardware = Category(id=1, name="Hardware", max_discount_pct=10)
-    cat_services = Category(id=2, name="Services", max_discount_pct=None)
-    db.add_all([cat_hardware, cat_services])
 
-    prod_laptop = Product(id=1, name="Laptop", category_id=1, price=1000, unit_margin_pct=20)
-    prod_setup = Product(id=2, name="Setup", category_id=2, price=200, unit_margin_pct=50)
-    db.add_all([prod_laptop, prod_setup])
+def test_portal_view_never_leaks_internal_data(client, db):
+    quote_id = sent_quote(db, discount_laptop=18)
+    token = token_for(db, quote_id)
+    body = client.get("/portal/quote", headers=headers(token)).text
+    for forbidden in ("unit_cost", "margin", "risk", "points_over", "applicable_limit", "approval"):
+        assert forbidden not in body
+    data = client.get("/portal/quote", headers=headers(token)).json()
+    assert data["lines"][0]["product_name"] == "Laptop"
 
+
+def test_expired_and_revoked_tokens_401(client, db):
+    quote_id = sent_quote(db)
+    expired = token_for(db, quote_id, expires_in_hours=-1)
+    assert client.get("/portal/quote", headers=headers(expired)).status_code == 401
+    token = token_for(db, quote_id)
+    row = db.query(PortalToken).filter(PortalToken.token == token).one()
+    row.revoked_at = datetime.now(timezone.utc)
     db.commit()
-    db.close()
-
-    yield
-
-    Base.metadata.drop_all(bind=engine)
+    assert client.get("/portal/quote", headers=headers(token)).status_code == 401
 
 
-def create_quote(db, status=QuoteStatus.approved, laptop_discount=5, setup_discount=5):
-    quote = Quote(customer_id=1, status=status)
-    db.add(quote)
-    db.commit()
-    db.refresh(quote)
+def test_unsent_quote_returns_403(client, db):
+    for status in ("draft", "approved", "pending_approval"):
+        quote_id = sent_quote(db, status=status)
+        token = token_for(db, quote_id)
+        res = client.get("/portal/quote", headers=headers(token))
+        if status == "pending_approval":
+            assert res.status_code == 200 and res.json()["status"] == "Under Review"
+        else:
+            assert res.status_code == 403
 
-    laptop_line = QuoteLine(
-        quote_id=quote.id, product_id=1, quantity=1, discount_pct=laptop_discount, line_value=1000
+
+def test_downgrade_only_counter_proposal_auto_applies_without_reapproval(client, db):
+    quote_id = sent_quote(db, discount_laptop=8, discount_setup=0)
+    token = token_for(db, quote_id)
+    laptop_line = db.query(QuoteLine).filter_by(quote_id=quote_id, product_id=1).one()
+    res = client.post(
+        "/portal/counter-proposal", headers=headers(token),
+        json={"proposed_lines": [{"quote_line_id": laptop_line.id, "proposed_discount_pct": 6}]},
     )
-    setup_line = QuoteLine(
-        quote_id=quote.id, product_id=2, quantity=1, discount_pct=setup_discount, line_value=200
-    )
-    db.add_all([laptop_line, setup_line])
-    db.commit()
-    db.refresh(laptop_line)
-    db.refresh(setup_line)
-
-    return quote.id, laptop_line.id, setup_line.id
-
-
-def make_token(db, quote_id, customer_id=1):
-    portal_token = generate_portal_token(quote_id, customer_id, db)
-    return portal_token.token
-
-
-def test_valid_token_grants_access_invalid_token_401():
-    db = TestingSessionLocal()
-    quote_id, _, _ = create_quote(db)
-    token = make_token(db, quote_id)
-    db.close()
-
-    ok_response = client.get("/portal/quote", headers={"X-Portal-Token": token})
-    assert ok_response.status_code == 200
-    assert ok_response.json()["quote_id"] == quote_id
-
-    bad_response = client.get("/portal/quote", headers={"X-Portal-Token": "not-a-real-token"})
-    assert bad_response.status_code == 401
-
-
-def test_expired_token_401():
-    db = TestingSessionLocal()
-    quote_id, _, _ = create_quote(db)
-    portal_token = PortalToken(
-        quote_id=quote_id,
-        token="expired-token-value",
-        customer_id=1,
-        expires_at=datetime.now(timezone.utc) - timedelta(hours=1),
-    )
-    db.add(portal_token)
-    db.commit()
-    db.close()
-
-    response = client.get("/portal/quote", headers={"X-Portal-Token": "expired-token-value"})
-    assert response.status_code == 401
-
-
-def test_draft_quote_returns_403():
-    db = TestingSessionLocal()
-    quote_id, _, _ = create_quote(db, status=QuoteStatus.draft)
-    token = make_token(db, quote_id)
-    db.close()
-
-    response = client.get("/portal/quote", headers={"X-Portal-Token": token})
-    assert response.status_code == 403
-
-
-def test_downgrade_only_counter_proposal_auto_applies_without_reapproval():
-    db = TestingSessionLocal()
-    quote_id, laptop_line_id, setup_line_id = create_quote(
-        db, status=QuoteStatus.approved, laptop_discount=8, setup_discount=5
-    )
-    token = make_token(db, quote_id)
-    db.close()
-
-    response = client.post(
-        "/portal/counter-proposal",
-        headers={"X-Portal-Token": token},
-        json={
-            "proposed_lines": [
-                {"quote_line_id": laptop_line_id, "proposed_discount_pct": 6},
-                {"quote_line_id": setup_line_id, "proposed_discount_pct": 5},
-            ]
-        },
-    )
-
-    assert response.status_code == 200
-    data = response.json()
+    assert res.status_code == 200, res.text
+    data = res.json()
     assert data["counter_proposal"]["status"] == "accepted"
-    assert data["quote"]["status"] == "approved"  # never touched pending_approval
+    assert data["quote"]["status"] == "under_negotiation"  # never touched pending_approval
     assert data["risk_result"] is None
-
-    db = TestingSessionLocal()
-    laptop_line = db.get(QuoteLine, laptop_line_id)
-    assert laptop_line.discount_pct == 6
-    proposal = db.query(CounterProposal).filter_by(quote_id=quote_id).one()
-    assert proposal.status == "accepted"
-    db.close()
+    db.expire_all()
+    assert float(db.get(QuoteLine, laptop_line.id).discount_pct) == 6
+    assert db.query(CounterProposal).filter_by(quote_id=quote_id).one().status == "accepted"
+    view = client.get("/portal/quote", headers=headers(token)).json()
+    assert view["can_confirm"] is True and view["status"] == "Under Negotiation"
 
 
-def test_bigger_discount_within_limits_auto_applies():
-    db = TestingSessionLocal()
-    # Laptop limit is 10 (Hardware category); starting at 5, proposing 9 -
-    # bigger than current but still within the category limit.
-    quote_id, laptop_line_id, setup_line_id = create_quote(
-        db, status=QuoteStatus.approved, laptop_discount=5, setup_discount=5
+def test_bigger_discount_within_limits_auto_applies(client, db):
+    quote_id = sent_quote(db, discount_laptop=5)
+    token = token_for(db, quote_id)
+    laptop_line = db.query(QuoteLine).filter_by(quote_id=quote_id, product_id=1).one()
+    res = client.post(
+        "/portal/counter-proposal", headers=headers(token),
+        json={"proposed_lines": [{"quote_line_id": laptop_line.id, "proposed_discount_pct": 9}]},
     )
-    token = make_token(db, quote_id)
-    db.close()
-
-    response = client.post(
-        "/portal/counter-proposal",
-        headers={"X-Portal-Token": token},
-        json={
-            "proposed_lines": [
-                {"quote_line_id": laptop_line_id, "proposed_discount_pct": 9},
-                {"quote_line_id": setup_line_id, "proposed_discount_pct": 5},
-            ]
-        },
-    )
-
-    assert response.status_code == 200
-    data = response.json()
+    data = res.json()
     assert data["risk_result"]["required_approval_level"] == "none"
     assert data["counter_proposal"]["status"] == "accepted"
-    assert data["quote"]["status"] == "approved"
+    assert data["quote"]["status"] == "under_negotiation"
+    assert client.get("/portal/quote", headers=headers(token)).json()["can_confirm"] is True
 
 
-def test_bigger_discount_crossing_limit_triggers_reapproval():
-    # Same numbers as the Phase 2/3 Laptop/Setup example: Setup Service
-    # (Services category, no explicit limit -> falls back to the Gold
-    # tier's 15%) proposed at 18% is 3 points over... use the Hardware
-    # line instead to reuse the *exact* "8 points over" example: Laptop
-    # (Hardware, limit 10) proposed at 18% -> 8 points over -> "manager".
-    db = TestingSessionLocal()
-    quote_id, laptop_line_id, setup_line_id = create_quote(
-        db, status=QuoteStatus.approved, laptop_discount=5, setup_discount=0
+def test_bigger_discount_crossing_limit_triggers_reapproval(client, as_manager, db):
+    quote_id = sent_quote(db, discount_laptop=5)
+    token = token_for(db, quote_id)
+    laptop_line = db.query(QuoteLine).filter_by(quote_id=quote_id, product_id=1).one()
+    res = client.post(
+        "/portal/counter-proposal", headers=headers(token),
+        json={"proposed_lines": [{"quote_line_id": laptop_line.id, "proposed_discount_pct": 18}], "message": "Budget is tight"},
     )
-    token = make_token(db, quote_id)
-    db.close()
-
-    response = client.post(
-        "/portal/counter-proposal",
-        headers={"X-Portal-Token": token},
-        json={
-            "proposed_lines": [
-                {"quote_line_id": laptop_line_id, "proposed_discount_pct": 18},
-                {"quote_line_id": setup_line_id, "proposed_discount_pct": 0},
-            ]
-        },
-    )
-
-    assert response.status_code == 200
-    data = response.json()
+    assert res.status_code == 200, res.text
+    data = res.json()
     assert data["risk_result"]["required_approval_level"] == "manager"
     assert any("8" in reason for reason in data["risk_result"]["reasons"])
     assert data["quote"]["status"] == "pending_approval"
     assert data["quote"]["current_approval_step"] == "manager"
     assert data["counter_proposal"]["status"] == "pending"
+    assert data["customer_status"] == "Under Review"
 
-    db = TestingSessionLocal()
-    logs = db.query(AuditLog).filter_by(
-        quote_id=quote_id, action="counter_proposal_triggered_reapproval"
-    ).all()
-    assert len(logs) == 1
-    assert "8" in logs[0].reason
-    # The live document reflects the negotiation even while re-approval pends.
-    laptop_line = db.get(QuoteLine, laptop_line_id)
-    assert laptop_line.discount_pct == 18
-    db.close()
+    logs = db.query(AuditLog).filter_by(quote_id=quote_id, action="counter_proposal_triggered_reapproval").all()
+    assert len(logs) == 1 and "8" in logs[0].reason
+    db.expire_all()
+    assert float(db.get(QuoteLine, laptop_line.id).discount_pct) == 18
 
-
-def test_internal_manager_approval_then_portal_confirm():
-    db = TestingSessionLocal()
-    quote_id, laptop_line_id, setup_line_id = create_quote(
-        db, status=QuoteStatus.approved, laptop_discount=5, setup_discount=0
-    )
-    token = make_token(db, quote_id)
-    db.close()
-
-    client.post(
-        "/portal/counter-proposal",
-        headers={"X-Portal-Token": token},
-        json={
-            "proposed_lines": [
-                {"quote_line_id": laptop_line_id, "proposed_discount_pct": 18},
-                {"quote_line_id": setup_line_id, "proposed_discount_pct": 0},
-            ]
-        },
-    )
-
-    # Borrow the internal quotes router's db dependency for just this one
-    # call to the pre-existing Phase 3 approval-action endpoint.
-    app.dependency_overrides[quotes_get_db] = override_get_db
-    try:
-        approval_response = client.post(
-            f"/quotes/{quote_id}/approval-action",
-            json={"actor": "Manager Bob", "action": "approved"},
-        )
-    finally:
-        app.dependency_overrides.pop(quotes_get_db, None)
-
-    assert approval_response.status_code == 200
-    assert approval_response.json()["quote"]["status"] == "approved"
-
-    confirm_response = client.post("/portal/confirm", headers={"X-Portal-Token": token})
-    assert confirm_response.status_code == 200
-    assert confirm_response.json()["status"] == "confirmed"
+    # the manager was notified and sees it in the queue
+    assert as_manager.get("/approvals").json()["total"] == 1
+    inbox = as_manager.get("/notifications").json()["items"]
+    assert any(n["type"] == "approval_required" for n in inbox)
+    # the customer cannot confirm nor submit another proposal meanwhile
+    assert client.post("/portal/confirm", headers=headers(token)).status_code == 409
+    again = client.post("/portal/counter-proposal", headers=headers(token), json={"proposed_lines": [{"quote_line_id": laptop_line.id, "proposed_discount_pct": 12}]})
+    assert again.status_code == 409
 
 
-def test_confirm_while_pending_approval_returns_400():
-    db = TestingSessionLocal()
-    quote_id, laptop_line_id, setup_line_id = create_quote(
-        db, status=QuoteStatus.approved, laptop_discount=5, setup_discount=0
-    )
-    token = make_token(db, quote_id)
-    db.close()
+def test_internal_manager_approval_then_portal_confirm(client, as_manager, as_rep, db):
+    quote_id = sent_quote(db, discount_laptop=5)
+    token = token_for(db, quote_id)
+    laptop_line = db.query(QuoteLine).filter_by(quote_id=quote_id, product_id=1).one()
+    client.post("/portal/counter-proposal", headers=headers(token), json={"proposed_lines": [{"quote_line_id": laptop_line.id, "proposed_discount_pct": 18}]})
 
-    client.post(
-        "/portal/counter-proposal",
-        headers={"X-Portal-Token": token},
-        json={
-            "proposed_lines": [
-                {"quote_line_id": laptop_line_id, "proposed_discount_pct": 18},
-                {"quote_line_id": setup_line_id, "proposed_discount_pct": 0},
-            ]
-        },
-    )
+    approval = as_manager.post(f"/quotes/{quote_id}/approval-action", json={"action": "approved", "note": "strategic account"})
+    assert approval.status_code == 200, approval.text
+    assert approval.json()["quote"]["status"] == "under_negotiation"  # back with the customer
+    assert approval.json()["quote"]["approval_valid"] is True
 
-    response = client.post("/portal/confirm", headers={"X-Portal-Token": token})
-    assert response.status_code == 400
+    view = client.get("/portal/quote", headers=headers(token)).json()
+    assert view["can_confirm"] is True
+    assert view["lines"][0]["discount_pct"] == 18
+    assert view["history"][0]["status"] == "accepted"
+
+    confirm = client.post("/portal/confirm", headers=headers(token))
+    assert confirm.status_code == 200, confirm.text
+    assert confirm.json()["status"] == "confirmed"
+    assert confirm.json()["order_number"].startswith("SO-")
+    # the rep and finance were notified
+    assert any(n["type"] == "customer_confirmation" for n in as_rep.get("/notifications").json()["items"])
 
 
-def test_counter_proposal_and_comment_reject_foreign_line():
-    db = TestingSessionLocal()
-    quote_id, _, _ = create_quote(db)
-    token = make_token(db, quote_id)
+def test_manager_rejecting_counter_proposal_restores_original_terms(client, as_manager, db):
+    quote_id = sent_quote(db, discount_laptop=5)
+    token = token_for(db, quote_id)
+    laptop_line = db.query(QuoteLine).filter_by(quote_id=quote_id, product_id=1).one()
+    client.post("/portal/counter-proposal", headers=headers(token), json={"proposed_lines": [{"quote_line_id": laptop_line.id, "proposed_discount_pct": 18}]})
+    res = as_manager.post(f"/quotes/{quote_id}/approval-action", json={"action": "rejected", "note": "cannot go that deep"})
+    assert res.status_code == 200
+    assert res.json()["quote"]["status"] == "under_negotiation"
+    db.expire_all()
+    assert float(db.get(QuoteLine, laptop_line.id).discount_pct) == 5
+    assert db.query(CounterProposal).filter_by(quote_id=quote_id).one().status == "rejected"
+    view = client.get("/portal/quote", headers=headers(token)).json()
+    assert view["can_confirm"] is True and view["lines"][0]["discount_pct"] == 5
+    assert client.post("/portal/confirm", headers=headers(token)).status_code == 200
 
-    other_quote_id, other_line_id, _ = create_quote(db)
-    db.close()
 
-    proposal_response = client.post(
-        "/portal/counter-proposal",
-        headers={"X-Portal-Token": token},
-        json={"proposed_lines": [{"quote_line_id": other_line_id, "proposed_discount_pct": 5}]},
-    )
-    assert proposal_response.status_code == 403
+def test_confirm_while_pending_approval_returns_409(client, db):
+    quote_id = sent_quote(db, status="pending_approval")
+    token = token_for(db, quote_id)
+    res = client.post("/portal/confirm", headers=headers(token))
+    assert res.status_code == 409
+    assert "pending approval" in res.json()["detail"]
 
-    comment_response = client.post(
-        f"/portal/lines/{other_line_id}/comment",
-        headers={"X-Portal-Token": token},
-        json={"comment": "not my line"},
-    )
-    assert comment_response.status_code == 403
+
+def test_counter_proposal_and_comment_reject_foreign_line(client, db):
+    quote_id = sent_quote(db)
+    other_id = sent_quote(db)
+    token = token_for(db, quote_id)
+    foreign_line = db.query(QuoteLine).filter_by(quote_id=other_id).first()
+    assert client.post("/portal/counter-proposal", headers=headers(token), json={"proposed_lines": [{"quote_line_id": foreign_line.id, "proposed_discount_pct": 1}]}).status_code == 403
+    assert client.post(f"/portal/lines/{foreign_line.id}/comment", headers=headers(token), json={"comment": "hi"}).status_code == 403
+
+
+def test_customer_comment_moves_quote_to_negotiation_and_rep_can_reply(client, as_rep, db):
+    quote_id = sent_quote(db)
+    token = token_for(db, quote_id)
+    line = db.query(QuoteLine).filter_by(quote_id=quote_id, product_id=1).one()
+    res = client.post(f"/portal/lines/{line.id}/comment", headers=headers(token), json={"comment": "Can this ship by Friday?"})
+    assert res.status_code == 201
+    assert client.get("/portal/quote", headers=headers(token)).json()["status"] == "Under Negotiation"
+    assert any(n["type"] == "customer_comment" for n in as_rep.get("/notifications").json()["items"])
+
+    reply = as_rep.post(f"/quotes/{quote_id}/lines/{line.id}/comments", json={"comment": "Yes, Friday works."})
+    note = as_rep.post(f"/quotes/{quote_id}/lines/{line.id}/comments", json={"comment": "margin is thin here", "is_internal": True})
+    assert reply.status_code == 201 and note.status_code == 201
+    visible = client.get("/portal/quote", headers=headers(token)).json()["lines"][0]["comments"]
+    assert [c["comment"] for c in visible] == ["Can this ship by Friday?", "Yes, Friday works."]
+    internal = as_rep.get(f"/quotes/{quote_id}/negotiation").json()["comments"]
+    assert len(internal) == 3
+
+
+def test_customer_login_sees_only_own_quotes(client, as_customer, as_admin, db):
+    mine = sent_quote(db)
+    tier2_customer = as_admin.post("/customers", json={"name": "Other Co", "tier_id": 1}).json()["id"]
+    theirs = make_quote(db, [(1, 1, 0)], status="sent", customer_id=tier2_customer)
+    listing = as_customer.get("/portal/quotes")
+    assert listing.status_code == 200
+    assert [q["quote_id"] for q in listing.json()["items"]] == [mine]
+    assert as_customer.get(f"/portal/quotes/{mine}").status_code == 200
+    assert as_customer.get(f"/portal/quotes/{theirs}").status_code == 403
+    assert as_customer.get(f"/quotes/{mine}").status_code == 403  # internal API stays closed
+    confirm = as_customer.post(f"/portal/quotes/{mine}/confirm")
+    assert confirm.status_code == 200 and confirm.json()["status"] == "confirmed"
+
+
+def test_send_quote_mints_link_and_emails_customer(as_rep, client, db):
+    from app.models import EmailMessage
+
+    quote_id = make_quote(db, [(1, 1, 5)], status="approved")
+    res = as_rep.post(f"/quotes/{quote_id}/send")
+    assert res.status_code == 200, res.text
+    body = res.json()
+    assert body["quote"]["status"] == "sent"
+    assert body["email_status"] == "sent" and body["email_to"] == "buyer@testcorp.example"
+    assert "/portal/" in body["portal_url"]
+    email = db.query(EmailMessage).filter(EmailMessage.template == "quote_sent").one()
+    assert body["portal_url"] in email.body_text
+    token = body["portal_url"].rsplit("/", 1)[1]
+    assert client.get("/portal/quote", headers=headers(token)).status_code == 200
+    # re-sending revokes the old link
+    again = as_rep.post(f"/quotes/{quote_id}/send").json()
+    assert client.get("/portal/quote", headers=headers(token)).status_code == 401
+    assert client.get("/portal/quote", headers=headers(again["portal_url"].rsplit("/", 1)[1])).status_code == 200

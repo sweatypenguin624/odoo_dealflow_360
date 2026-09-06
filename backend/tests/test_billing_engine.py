@@ -1,3 +1,4 @@
+from decimal import Decimal
 from datetime import date
 
 from app.services.billing_engine import (
@@ -81,7 +82,8 @@ def test_cancellation_on_last_day_of_cycle_has_no_errors():
 
     result_last_day = calculate_cancellation_refund(subscription, date(2026, 1, 30))
     assert result_last_day.days_remaining_in_cycle == 1
-    assert round(result_last_day.refund_or_credit_amount, 2) == round(500 / 30, 2)
+    # Money is Decimal, rounded half-up to cents: 500/30 = 16.666.. -> 16.67
+    assert result_last_day.refund_or_credit_amount == Decimal("16.67")
 
     result_on_end = calculate_cancellation_refund(subscription, date(2026, 1, 31))
     assert result_on_end.days_remaining_in_cycle == 0

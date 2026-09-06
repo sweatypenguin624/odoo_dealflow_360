@@ -1,7 +1,4 @@
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, declarative_base
-from app.config import settings
+"""Backwards-compatible re-exports. New code should import from app.db.*"""
 
-engine = create_engine(settings.database_url)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
+from app.db.base import Base  # noqa: F401
+from app.db.session import SessionLocal, engine, get_db  # noqa: F401

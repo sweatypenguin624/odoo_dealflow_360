@@ -1,127 +1,163 @@
-"""Margin calculation and upsell/cross-sell ranking engine.
+"""Margin calculation and upsell / cross-sell ranking.
 
-Pure Python, no FastAPI or database dependencies, so it can be unit
-tested in isolation and reused wherever a quote's margin or upsell
-suggestions need computing (the quote-builder screen, a live margin
-indicator, a batch re-rank job, etc.).
+Pure Python, no FastAPI or database dependencies.
 
-Margin model (v1, intentionally simple):
-  - Each line's margin dollars = price * quantity * (1 - discount_pct/100)
-    * (unit_margin_pct / 100).
-  - total_price and total_margin_amount are plain sums across lines.
-  - overall_margin_pct is total_margin_amount / total_price * 100,
-    0 if total_price is 0 (an empty or all-zero-price quote).
+Margin model:
+  - line net = unit price * quantity * (1 - discount%)
+  - line margin = line net - unit cost * quantity   (cost-based)
+    When only a unit_margin_pct is known (legacy callers) the margin is
+    line net * unit_margin_pct.
+  - overall_margin_pct = total margin / total net * 100 (0 for an empty quote)
 
-Upsell ranking rules:
-  - Candidates below min_margin_pct_threshold are dropped entirely -
-    a low-margin item should never surface, not just rank last.
-  - Promoted candidates always sort above non-promoted ones; within
-    the same promoted status, higher co_purchase_score wins.
-  - margin_delta_if_added is the overall_margin_pct swing from adding
-    one unit of the candidate at 0% discount, so callers can show
-    "adding this would move margin by +X.Xpp".
+Ranking rules:
+  - Candidates whose unit margin is below the threshold are dropped, not
+    demoted - a low-margin item should never surface.
+  - Out-of-stock candidates are demoted below in-stock ones.
+  - Active promotions sort first; within the same promotion state, higher
+    co-purchase score wins.
+  - margin_delta_if_added is the overall-margin swing from adding one
+    unit at 0% discount; price_impact is the added net revenue.
 """
 
-from dataclasses import dataclass
-from typing import List
+from dataclasses import dataclass, field
+from decimal import Decimal
+from typing import List, Optional, Union
+
+from app.core.money import D, HUNDRED, money, pct
+
+Number = Union[Decimal, int, float, str]
 
 
 @dataclass
 class QuoteLineForMargin:
     quote_line_id: int
     product_id: int
-    price: float
+    price: Number
     quantity: int
-    discount_pct: float
-    unit_margin_pct: float
+    discount_pct: Number
+    unit_margin_pct: Number = Decimal("0")
+    unit_cost: Optional[Number] = None
 
 
 @dataclass
 class MarginSummary:
-    total_price: float
-    total_margin_amount: float
-    overall_margin_pct: float
+    total_price: Decimal
+    total_margin_amount: Decimal
+    overall_margin_pct: Decimal
 
 
 @dataclass
 class CandidateProduct:
     product_id: int
     name: str
-    price: float
-    unit_margin_pct: float
-    co_purchase_score: float
+    price: Number
+    unit_margin_pct: Number
+    co_purchase_score: Number
     is_promoted: bool
+    sku: Optional[str] = None
+    unit_cost: Optional[Number] = None
+    stock_available: Optional[int] = None
+    promotion_label: Optional[str] = None
+    reason_hint: Optional[str] = None
 
 
 @dataclass
 class RankedSuggestion:
     product_id: int
     name: str
-    price: float
-    margin_delta_if_added: float
+    price: Decimal
+    margin_delta_if_added: Decimal
     is_promoted: bool
     reason: str
+    sku: Optional[str] = None
+    price_impact: Decimal = Decimal("0")
+    unit_margin_pct: Decimal = Decimal("0")
+    stock_available: Optional[int] = None
+    in_stock: bool = True
+    promotion_label: Optional[str] = None
+    co_purchase_score: Decimal = Decimal("0")
 
 
-def _line_price(line: QuoteLineForMargin) -> float:
-    return line.price * line.quantity * (1 - line.discount_pct / 100)
+def _line_net(line: QuoteLineForMargin) -> Decimal:
+    return D(line.price) * line.quantity * (HUNDRED - D(line.discount_pct)) / HUNDRED
+
+
+def _line_margin(line: QuoteLineForMargin, net: Decimal) -> Decimal:
+    if line.unit_cost is not None:
+        return net - D(line.unit_cost) * line.quantity
+    return net * D(line.unit_margin_pct) / HUNDRED
 
 
 def calculate_margin_summary(lines: List[QuoteLineForMargin]) -> MarginSummary:
-    total_price = 0.0
-    total_margin_amount = 0.0
-
+    total_price = Decimal("0")
+    total_margin = Decimal("0")
     for line in lines:
-        line_price = _line_price(line)
-        total_price += line_price
-        total_margin_amount += line_price * (line.unit_margin_pct / 100)
+        net = _line_net(line)
+        total_price += net
+        total_margin += _line_margin(line, net)
 
-    overall_margin_pct = (total_margin_amount / total_price * 100) if total_price else 0.0
-
+    overall = pct(total_margin / total_price * HUNDRED) if total_price else Decimal("0")
     return MarginSummary(
-        total_price=total_price,
-        total_margin_amount=total_margin_amount,
-        overall_margin_pct=overall_margin_pct,
+        total_price=money(total_price), total_margin_amount=money(total_margin), overall_margin_pct=overall
     )
 
 
 def rank_upsell_suggestions(
     current_lines: List[QuoteLineForMargin],
     candidates: List[CandidateProduct],
-    min_margin_pct_threshold: float,
+    min_margin_pct_threshold: Number,
 ) -> List[RankedSuggestion]:
     baseline = calculate_margin_summary(current_lines)
+    threshold = D(min_margin_pct_threshold)
 
-    healthy_candidates = [c for c in candidates if c.unit_margin_pct >= min_margin_pct_threshold]
-    healthy_candidates.sort(key=lambda c: (not c.is_promoted, -c.co_purchase_score))
+    healthy = [c for c in candidates if D(c.unit_margin_pct) >= threshold]
+    healthy.sort(
+        key=lambda c: (
+            c.stock_available is not None and c.stock_available <= 0,  # out-of-stock last
+            not c.is_promoted,
+            -D(c.co_purchase_score),
+        )
+    )
 
     suggestions: List[RankedSuggestion] = []
-    for candidate in healthy_candidates:
-        synthetic_line = QuoteLineForMargin(
+    for candidate in healthy:
+        synthetic = QuoteLineForMargin(
             quote_line_id=-1,
             product_id=candidate.product_id,
             price=candidate.price,
             quantity=1,
             discount_pct=0,
             unit_margin_pct=candidate.unit_margin_pct,
+            unit_cost=candidate.unit_cost,
         )
-        with_candidate = calculate_margin_summary(current_lines + [synthetic_line])
-        margin_delta = with_candidate.overall_margin_pct - baseline.overall_margin_pct
+        with_candidate = calculate_margin_summary(current_lines + [synthetic])
+        margin_delta = pct(with_candidate.overall_margin_pct - baseline.overall_margin_pct)
+        in_stock = candidate.stock_available is None or candidate.stock_available > 0
 
-        reason = (
-            "Promoted item — strong margin fit"
-            if candidate.is_promoted
-            else "Frequently bought with items in this quote"
-        )
+        if candidate.is_promoted:
+            reason = candidate.promotion_label or "Promoted item — strong margin fit"
+        elif candidate.reason_hint:
+            reason = candidate.reason_hint
+        else:
+            reason = "Frequently bought with items in this quote"
+        if not in_stock:
+            reason += " (currently out of stock)"
 
         suggestions.append(
             RankedSuggestion(
                 product_id=candidate.product_id,
                 name=candidate.name,
-                price=candidate.price,
+                price=money(candidate.price),
                 margin_delta_if_added=margin_delta,
                 is_promoted=candidate.is_promoted,
                 reason=reason,
+                sku=candidate.sku,
+                price_impact=money(candidate.price),
+                unit_margin_pct=pct(candidate.unit_margin_pct),
+                stock_available=candidate.stock_available,
+                in_stock=in_stock,
+                promotion_label=candidate.promotion_label,
+                co_purchase_score=pct(candidate.co_purchase_score),
             )
         )
 

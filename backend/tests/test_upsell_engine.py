@@ -1,3 +1,4 @@
+import pytest
 from app.services.upsell_engine import (
     CandidateProduct,
     QuoteLineForMargin,
@@ -24,7 +25,8 @@ def test_margin_summary_two_lines_matches_hand_computed_values():
 
     assert result.total_price == 380
     assert result.total_margin_amount == 116
-    assert round(result.overall_margin_pct, 4) == round(116 / 380 * 100, 4)
+    # Percentages are Decimal and rounded to 2dp by the money helpers.
+    assert float(result.overall_margin_pct) == pytest.approx(116 / 380 * 100, abs=0.01)
 
 
 def test_margin_summary_empty_lines_has_no_division_by_zero():

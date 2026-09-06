@@ -1,341 +1,112 @@
 "use client";
-
 import Link from "next/link";
-import { use, useEffect, useMemo, useState } from "react";
-import {
-  ApiError,
-  confirmFulfillment,
-  generateQuoteInvoice,
-  getFulfillment,
-  getQuote,
-  listWarehouses,
-  overrideFulfillment,
-  suggestFulfillment,
-} from "@/lib/api";
-import type { FulfillmentPlan, QuoteDetail, Warehouse } from "@/lib/api";
-import { useReload } from "@/lib/reload-context";
-import { StatusBadge } from "@/components/StatusBadge";
+import { use, useState } from "react";
+import { fulfillment, inventory, quotes, type FulfillmentPlan, type Warehouse } from "@/lib/api";
+import { ApiError, errorMessage } from "@/lib/api/client";
+import { useApi } from "@/lib/hooks/useApi";
+import { useAuth } from "@/lib/auth/AuthContext";
+import { formatDate, formatDateTime } from "@/lib/format";
+import { Badge, Button, Card, ConfirmDialog, ErrorState, Field, Input, LinkButton, Modal, PageHeader, Skeleton, StatusBadge, Select } from "@/components/ui";
+import { useToast } from "@/components/ui/Toast";
 
-export default function FulfillmentPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
-  const quoteId = Number(id);
-  const { reloadNonce } = useReload();
+export default function FulfillmentDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const quoteId = Number(use(params).id);
+  const { can } = useAuth();
+  const toast = useToast();
+  const quote = useApi(() => quotes.get(quoteId), [quoteId]);
+  const plan = useApi(() => fulfillment.plan(quoteId).catch((e) => { if (e instanceof ApiError && e.status === 404) return null; throw e; }), [quoteId]);
+  const warehouses = useApi(() => inventory.warehouses({ page_size: 100 }), []);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [shipDialog, setShipDialog] = useState(false);
+  const [ship, setShip] = useState({ expected_date: "", tracking_reference: "", warehouse_id: "" });
+  const [override, setOverride] = useState<{ quote_line_id: number; warehouse_id: string; quantity_fulfilled: number }[] | null>(null);
+  const manage = can("fulfillment:manage");
 
-  const [quote, setQuote] = useState<QuoteDetail | null>(null);
-  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
-  const [plan, setPlan] = useState<FulfillmentPlan | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  const [overrideQuantities, setOverrideQuantities] = useState<Record<number, Record<number, number>>>(
-    {},
-  );
-  const [confirmError, setConfirmError] = useState<string | null>(null);
-  const [confirming, setConfirming] = useState(false);
-  const [generatingInvoice, setGeneratingInvoice] = useState(false);
-  const [invoiceError, setInvoiceError] = useState<string | null>(null);
-  const [generatedInvoiceId, setGeneratedInvoiceId] = useState<number | null>(null);
-  const [overrideError, setOverrideError] = useState<string | null>(null);
-  const [savingOverride, setSavingOverride] = useState(false);
-
-  const warehouseById = useMemo(() => {
-    const map = new Map<number, Warehouse>();
-    for (const w of warehouses) map.set(w.id, w);
-    return map;
-  }, [warehouses]);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function load() {
-      setLoading(true);
-      setError(null);
-      try {
-        const [quoteDetail, warehouseList] = await Promise.all([getQuote(quoteId), listWarehouses()]);
-        if (cancelled) return;
-        setQuote(quoteDetail);
-        setWarehouses(warehouseList);
-
-        if (quoteDetail.status !== "approved") {
-          setPlan(null);
-          return;
-        }
-
-        let fulfillmentPlan: FulfillmentPlan;
-        try {
-          fulfillmentPlan = await getFulfillment(quoteId);
-        } catch (err) {
-          if (err instanceof ApiError && err.status === 404) {
-            fulfillmentPlan = await suggestFulfillment(quoteId);
-          } else {
-            throw err;
-          }
-        }
-        if (!cancelled) {
-          setPlan(fulfillmentPlan);
-          setOverrideQuantities(initializeOverrides(fulfillmentPlan));
-        }
-      } catch (err) {
-        if (!cancelled) setError(err instanceof ApiError ? err.message : "Failed to load fulfillment");
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, [quoteId, reloadNonce]);
-
-  function initializeOverrides(fulfillmentPlan: FulfillmentPlan): Record<number, Record<number, number>> {
-    const result: Record<number, Record<number, number>> = {};
-    for (const split of fulfillmentPlan.splits) {
-      if (split.is_backorder || split.warehouse_id === null) continue;
-      result[split.quote_line_id] ??= {};
-      result[split.quote_line_id][split.warehouse_id] =
-        (result[split.quote_line_id][split.warehouse_id] ?? 0) + split.quantity_fulfilled;
-    }
-    return result;
+  async function run(name: string, fn: () => Promise<FulfillmentPlan | unknown>, ok: string) {
+    setBusy(name);
+    try { await fn(); toast.success(ok); plan.reload(); quote.reload(); } catch (err) { toast.error(errorMessage(err)); plan.reload(); } finally { setBusy(null); setShipDialog(false); setOverride(null); }
   }
 
-  async function handleAcceptSuggested() {
-    setConfirming(true);
-    setConfirmError(null);
-    try {
-      const confirmed = await confirmFulfillment(quoteId);
-      setPlan(confirmed);
-    } catch (err) {
-      setConfirmError(err instanceof ApiError ? err.message : "Failed to confirm fulfillment");
-    } finally {
-      setConfirming(false);
-    }
-  }
-
-  async function handleGenerateInvoice() {
-    setGeneratingInvoice(true);
-    setInvoiceError(null);
-    try {
-      const invoice = await generateQuoteInvoice(quoteId);
-      setGeneratedInvoiceId(invoice.id);
-    } catch (err) {
-      setInvoiceError(err instanceof ApiError ? err.message : "Failed to generate invoice");
-    } finally {
-      setGeneratingInvoice(false);
-    }
-  }
-
-  function setOverrideValue(lineId: number, warehouseId: number, value: number) {
-    setOverrideQuantities((prev) => ({
-      ...prev,
-      [lineId]: { ...prev[lineId], [warehouseId]: value },
-    }));
-  }
-
-  function lineOverrideTotal(lineId: number): number {
-    const perWarehouse = overrideQuantities[lineId] ?? {};
-    return Object.values(perWarehouse).reduce((sum, v) => sum + (Number.isFinite(v) ? v : 0), 0);
-  }
-
-  const overrideIsValid =
-    quote !== null &&
-    quote.lines.every((line) => lineOverrideTotal(line.id) === line.quantity);
-
-  async function handleSaveOverride() {
-    if (!quote || !overrideIsValid) return;
-    setSavingOverride(true);
-    setOverrideError(null);
-    try {
-      const allocations = quote.lines.flatMap((line) =>
-        Object.entries(overrideQuantities[line.id] ?? {})
-          .filter(([, qty]) => qty > 0)
-          .map(([warehouseId, qty]) => ({
-            quote_line_id: line.id,
-            warehouse_id: Number(warehouseId),
-            quantity_fulfilled: qty,
-          })),
-      );
-      const updated = await overrideFulfillment(quoteId, allocations);
-      setPlan(updated);
-      setOverrideQuantities(initializeOverrides(updated));
-    } catch (err) {
-      setOverrideError(err instanceof ApiError ? err.message : "Failed to save override");
-    } finally {
-      setSavingOverride(false);
-    }
-  }
-
-  if (error) return <p className="text-red-600 dark:text-red-400">Error: {error}</p>;
-  if (loading || quote === null) return <p className="text-zinc-500 dark:text-zinc-400">Loading…</p>;
+  if (quote.error) return <ErrorState message={quote.error} onRetry={quote.reload} />;
+  if (!quote.data) return <Skeleton className="h-64" />;
+  const q = quote.data;
+  const p = plan.data;
+  const acts = p?.available_actions ?? [];
+  const physical = q.lines.filter((l) => !l.is_recurring && l.stock_available !== null);
+  const whName = (id: number | null) => warehouses.data?.items.find((w) => w.id === id)?.name ?? (id ? `Warehouse ${id}` : "Backorder");
 
   return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <Link
-          href={`/workspace/quotations/${quoteId}`}
-          className="text-sm text-blue-600 hover:underline dark:text-blue-400"
-        >
-          ← Back to Quote #{quoteId}
-        </Link>
-        <div className="mt-2 flex items-center justify-between">
-          <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50">
-            Fulfillment — {quote.customer_name}
-          </h1>
-          <StatusBadge status={quote.status} />
-        </div>
-      </div>
-
-      {quote.status !== "approved" ? (
-        <p className="rounded-lg border border-zinc-200 bg-white p-4 text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
-          This quote isn&apos;t approved yet — fulfillment planning becomes available once it is.
-        </p>
-      ) : (
+    <div className="space-y-5">
+      <PageHeader breadcrumb={{ href: "/workspace/fulfillment", label: "Fulfillment" }} title={<span className="flex items-center gap-2">{q.order_number ?? q.quote_number} <StatusBadge status={q.fulfillment_status} /></span>} subtitle={<>{q.customer_name} · <Link href={`/workspace/quotations/${q.id}`} className="link">{q.quote_number}</Link>{q.promised_delivery_date && ` · promised ${formatDate(q.promised_delivery_date)}`}{q.expected_delivery_date && ` · expected ${formatDate(q.expected_delivery_date)}`}</>} actions={
         <>
-          <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
-            <table className="w-full min-w-[560px] text-sm">
-              <thead className="bg-zinc-50 text-left text-xs uppercase text-zinc-500 dark:bg-zinc-900 dark:text-zinc-400">
-                <tr>
-                  <th className="px-4 py-2">Line</th>
-                  <th className="px-4 py-2">Warehouse</th>
-                  <th className="px-4 py-2">Quantity</th>
-                  <th className="px-4 py-2">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                {plan?.splits.map((split) => {
-                  const line = quote.lines.find((l) => l.id === split.quote_line_id);
-                  const warehouse = split.warehouse_id ? warehouseById.get(split.warehouse_id) : null;
-                  return (
-                    <tr key={split.id} className="bg-white dark:bg-zinc-950">
-                      <td className="px-4 py-2">{line?.product_name ?? `Line ${split.quote_line_id}`}</td>
-                      <td className="px-4 py-2">{warehouse?.name ?? "—"}</td>
-                      <td className="px-4 py-2">{split.quantity_fulfilled}</td>
-                      <td className="px-4 py-2">
-                        {split.is_backorder ? (
-                          <span className="rounded bg-red-100 px-2 py-0.5 text-xs text-red-800 dark:bg-red-900/40 dark:text-red-300">
-                            Backorder
-                          </span>
-                        ) : (
-                          <span className="rounded bg-green-100 px-2 py-0.5 text-xs text-green-800 dark:bg-green-900/40 dark:text-green-300">
-                            Fulfilled
-                          </span>
-                        )}
-                        {split.warning && (
-                          <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">{split.warning}</p>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
+          {q.status !== "confirmed" && <Badge tone="amber">Order not confirmed yet</Badge>}
+          {q.status === "confirmed" && manage && (!p || acts.includes("resuggest")) && <Button onClick={() => run("suggest", () => fulfillment.suggest(quoteId), "Warehouse split suggested.")} loading={busy === "suggest"} data-testid="suggest-btn">{p ? "Re-plan" : "Suggest warehouse split"}</Button>}
+          {acts.includes("override") && manage && <Button variant="secondary" onClick={() => setOverride(p!.splits.filter((s) => s.status !== "cancelled").map((s) => ({ quote_line_id: s.quote_line_id, warehouse_id: s.warehouse_id ? String(s.warehouse_id) : "", quantity_fulfilled: s.quantity_fulfilled })))}>Override</Button>}
+          {acts.includes("confirm") && manage && <Button variant="success" onClick={() => run("confirm", () => fulfillment.confirm(quoteId), "Stock reserved for this order.")} loading={busy === "confirm"} data-testid="reserve-btn">Confirm & reserve stock</Button>}
+          {acts.includes("ship") && manage && <Button onClick={() => setShipDialog(true)} data-testid="ship-btn">Ship reserved units</Button>}
+          {acts.includes("consolidate") && manage && <Button variant="secondary" onClick={() => run("consolidate", () => fulfillment.consolidate(quoteId), "Backorders consolidated against current stock.")} loading={busy === "consolidate"} data-testid="consolidate-btn">Consolidate remaining backorder</Button>}
+          {acts.includes("release") && manage && <Button variant="ghost" onClick={() => run("release", () => fulfillment.release(quoteId, "Released by operations"), "Reservation released.")} loading={busy === "release"}>Release stock</Button>}
+          <LinkButton href={`/workspace/quotations/${quoteId}/billing`}>Billing →</LinkButton>
+        </>
+      } />
+
+      {plan.error && <ErrorState message={plan.error} onRetry={plan.reload} />}
+      {q.status === "confirmed" && !p && !plan.loading && (
+        <Card title="Order lines">
+          <p className="mb-3 text-sm text-zinc-600">No fulfillment plan yet. The engine allocates stock across warehouses (cheapest shipping first, fewest shipments) and backorders any shortfall.</p>
+          <ul className="text-sm">{physical.map((l) => <li key={l.id} className="flex justify-between border-b border-zinc-100 py-1"><span>{l.description}</span><span>{l.quantity} needed · {l.stock_available} available network-wide</span></li>)}</ul>
+          {physical.length === 0 && <p className="text-sm text-zinc-500">This order has only services, licences or subscriptions — nothing to ship.</p>}
+        </Card>
+      )}
+
+      {p && (
+        <>
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+            {[["Plan status", <StatusBadge key="s" status={p.status} />], ["Shipments", p.total_shipments], ["Reserved", p.units_reserved], ["Shipped", p.units_shipped], ["Backordered", <span key="b" className={p.units_backordered ? "text-red-700" : ""}>{p.units_backordered}</span>]].map(([l, v]) => <div key={String(l)} className="card p-3"><p className="text-xs uppercase text-zinc-500">{l}</p><p className="text-lg font-semibold">{v}</p></div>)}
+          </div>
+          {p.backorder_summary.length > 0 && <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800"><p className="font-medium">Backorders</p><ul className="list-inside list-disc">{p.backorder_summary.map((b) => <li key={b}>{b}</li>)}</ul></div>}
+          <Card title="Allocations" padded={false}>
+            <table className="w-full text-sm" data-testid="splits">
+              <thead className="bg-zinc-50 text-left text-xs uppercase text-zinc-500"><tr><th className="px-4 py-2">Line</th><th className="px-2 py-2">Warehouse</th><th className="px-2 py-2 text-right">Units</th><th className="px-2 py-2">Status</th><th className="px-2 py-2">Shipment</th><th className="px-2 py-2">Expected</th></tr></thead>
+              <tbody className="divide-y divide-zinc-100">{p.splits.map((s) => <tr key={s.id} className={s.is_backorder ? "bg-red-50/40" : ""}><td className="px-4 py-2">{s.product_name}</td><td className="px-2 py-2">{s.warehouse_name ?? <span className="text-red-700">Backorder</span>}{s.warning && <span className="block text-xs text-amber-700">{s.warning}</span>}</td><td className="px-2 py-2 text-right">{s.quantity_fulfilled}</td><td className="px-2 py-2"><StatusBadge status={s.status} /></td><td className="px-2 py-2 text-xs">{p.shipments.find((sh) => sh.id === s.shipment_id)?.shipment_number ?? "—"}</td><td className="px-2 py-2 text-xs">{formatDate(s.expected_date)}</td></tr>)}</tbody>
             </table>
-          </div>
-
-          {plan && plan.backorder_summary.length > 0 && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300">
-              {plan.backorder_summary.map((line, i) => (
-                <p key={i}>{line}</p>
-              ))}
-            </div>
-          )}
-
-          <div className="flex items-center gap-3">
-            {plan?.status === "suggested" && (
-              <button
-                onClick={handleAcceptSuggested}
-                disabled={confirming}
-                className="w-fit rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-              >
-                {confirming ? "Confirming…" : "Accept Suggested Split"}
-              </button>
-            )}
-            {plan?.status === "confirmed" && (
-              <button
-                onClick={handleGenerateInvoice}
-                disabled={generatingInvoice}
-                className="w-fit rounded bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
-              >
-                {generatingInvoice ? "Generating…" : "Generate Invoice"}
-              </button>
-            )}
-            {plan && <StatusBadge status={plan.status} />}
-          </div>
-          {confirmError && <p className="text-sm text-red-600 dark:text-red-400">{confirmError}</p>}
-          {invoiceError && <p className="text-sm text-red-600 dark:text-red-400">{invoiceError}</p>}
-          {generatedInvoiceId !== null && (
-            <div className="rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-800 dark:border-green-900 dark:bg-green-950/40 dark:text-green-300">
-              Invoice created.{" "}
-              <Link href={`/workspace/invoices/${generatedInvoiceId}`} className="underline">
-                View invoice
-              </Link>
-            </div>
-          )}
-
-          <div>
-            <h2 className="mb-2 text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-              Manual Override
-            </h2>
-            <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
-              <table className="w-full min-w-[560px] text-sm">
-                <thead className="bg-zinc-50 text-left text-xs uppercase text-zinc-500 dark:bg-zinc-900 dark:text-zinc-400">
-                  <tr>
-                    <th className="px-4 py-2">Line (needed)</th>
-                    {warehouses.map((w) => (
-                      <th key={w.id} className="px-4 py-2">
-                        {w.name}
-                      </th>
-                    ))}
-                    <th className="px-4 py-2">Total</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                  {quote.lines.map((line) => {
-                    const total = lineOverrideTotal(line.id);
-                    const valid = total === line.quantity;
-                    return (
-                      <tr key={line.id} className="bg-white dark:bg-zinc-950">
-                        <td className="px-4 py-2">
-                          {line.product_name} ({line.quantity})
-                        </td>
-                        {warehouses.map((w) => (
-                          <td key={w.id} className="px-4 py-2">
-                            <input
-                              type="number"
-                              min={0}
-                              value={overrideQuantities[line.id]?.[w.id] ?? 0}
-                              onChange={(e) => setOverrideValue(line.id, w.id, Number(e.target.value))}
-                              className="w-16 rounded border border-zinc-300 px-2 py-1 dark:border-zinc-700 dark:bg-zinc-900"
-                            />
-                          </td>
-                        ))}
-                        <td className={`px-4 py-2 font-medium ${valid ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
-                          {total} / {line.quantity}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
+          </Card>
+          <Card title="Shipments" padded={false}>
+            {p.shipments.length === 0 ? <p className="p-4 text-sm text-zinc-500">Nothing shipped yet.</p> : (
+              <table className="w-full text-sm">
+                <thead className="bg-zinc-50 text-left text-xs uppercase text-zinc-500"><tr><th className="px-4 py-2">Shipment</th><th className="px-2 py-2">Warehouse</th><th className="px-2 py-2 text-right">Units</th><th className="px-2 py-2">Status</th><th className="px-2 py-2">Shipped</th><th className="px-2 py-2">Expected / delivered</th><th className="px-2 py-2">Tracking</th><th /></tr></thead>
+                <tbody className="divide-y divide-zinc-100">{p.shipments.map((sh) => <tr key={sh.id}><td className="px-4 py-2 font-medium">{sh.shipment_number}</td><td className="px-2 py-2">{sh.warehouse_name}</td><td className="px-2 py-2 text-right">{sh.units}</td><td className="px-2 py-2"><StatusBadge status={sh.status} /></td><td className="px-2 py-2 text-xs">{formatDateTime(sh.shipped_at)}</td><td className="px-2 py-2 text-xs">{sh.delivered_at ? formatDateTime(sh.delivered_at) : formatDate(sh.expected_date)}{sh.promised_date && sh.expected_date && sh.expected_date > sh.promised_date && !sh.delivered_at && <Badge tone="red" className="ml-1">late</Badge>}</td><td className="px-2 py-2 text-xs">{sh.tracking_reference ?? "—"}</td><td className="px-2 py-2 text-right">{sh.status === "shipped" && manage && <Button size="sm" variant="secondary" loading={busy === `deliver${sh.id}`} onClick={() => run(`deliver${sh.id}`, () => fulfillment.deliver(quoteId, sh.id), `${sh.shipment_number} marked delivered.`)}>Mark delivered</Button>}</td></tr>)}</tbody>
               </table>
-            </div>
-            <button
-              onClick={handleSaveOverride}
-              disabled={!overrideIsValid || savingOverride}
-              className="mt-3 w-fit rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-            >
-              {savingOverride ? "Saving…" : "Save Override"}
-            </button>
-            {!overrideIsValid && (
-              <p className="mt-2 text-sm text-amber-600 dark:text-amber-400">
-                Each line&apos;s warehouse quantities must sum to exactly the quantity needed before
-                saving.
-              </p>
             )}
-            {overrideError && (
-              <p className="mt-2 text-sm text-red-600 dark:text-red-400">{overrideError}</p>
-            )}
-          </div>
+          </Card>
         </>
       )}
+
+      <ConfirmDialog open={shipDialog} onClose={() => setShipDialog(false)} title="Ship reserved units" confirmLabel="Ship" loading={busy === "ship"} onConfirm={() => run("ship", () => fulfillment.ship(quoteId, { expected_date: ship.expected_date || undefined, tracking_reference: ship.tracking_reference || undefined, warehouse_id: ship.warehouse_id ? Number(ship.warehouse_id) : undefined }), "Shipment created and stock consumed.")}>
+        <div className="mt-2 grid gap-3">
+          <Field label="Warehouse" hint="Leave blank to ship everything that is reserved."><Select value={ship.warehouse_id} onChange={(e) => setShip({ ...ship, warehouse_id: e.target.value })}><option value="">All reserved warehouses</option>{p?.splits.filter((s) => s.status === "reserved").map((s) => s.warehouse_id).filter((v, i, a) => v && a.indexOf(v) === i).map((id) => <option key={id!} value={id!}>{whName(id)}</option>)}</Select></Field>
+          <Field label="Expected delivery date"><Input type="date" value={ship.expected_date} onChange={(e) => setShip({ ...ship, expected_date: e.target.value })} /></Field>
+          <Field label="Tracking reference"><Input value={ship.tracking_reference} onChange={(e) => setShip({ ...ship, tracking_reference: e.target.value })} /></Field>
+        </div>
+      </ConfirmDialog>
+
+      <Modal open={override !== null} onClose={() => setOverride(null)} title="Override allocations" size="lg" footer={<><Button variant="secondary" onClick={() => setOverride(null)}>Cancel</Button><Button loading={busy === "override"} onClick={() => override && run("override", () => fulfillment.override(quoteId, { allocations: override.map((a) => ({ quote_line_id: a.quote_line_id, warehouse_id: a.warehouse_id ? Number(a.warehouse_id) : null, quantity_fulfilled: a.quantity_fulfilled, is_backorder: !a.warehouse_id })) }), "Allocations overridden.")}>Save allocations</Button></>}>
+        {override && (
+          <div className="space-y-2">
+            <p className="text-sm text-zinc-600">Each line must total exactly its ordered quantity. Leave the warehouse empty to backorder units.</p>
+            {override.map((a, i) => (
+              <div key={i} className="grid grid-cols-[1fr_180px_100px_auto] items-end gap-2 text-sm">
+                <span>{q.lines.find((l) => l.id === a.quote_line_id)?.description} <span className="text-xs text-zinc-500">(needs {q.lines.find((l) => l.id === a.quote_line_id)?.quantity})</span></span>
+                <Select value={a.warehouse_id} onChange={(e) => setOverride(override.map((x, j) => j === i ? { ...x, warehouse_id: e.target.value } : x))}><option value="">Backorder</option>{warehouses.data?.items.map((w: Warehouse) => <option key={w.id} value={w.id}>{w.name}</option>)}</Select>
+                <Input type="number" min={1} value={a.quantity_fulfilled} onChange={(e) => setOverride(override.map((x, j) => j === i ? { ...x, quantity_fulfilled: Number(e.target.value) } : x))} />
+                <Button variant="ghost" size="sm" onClick={() => setOverride(override.filter((_, j) => j !== i))}>✕</Button>
+              </div>
+            ))}
+            <Button variant="secondary" size="sm" onClick={() => setOverride([...override, { quote_line_id: physical[0]?.id ?? 0, warehouse_id: "", quantity_fulfilled: 1 }])}>+ Add allocation</Button>
+            <Select value="" onChange={(e) => e.target.value && setOverride([...override, { quote_line_id: Number(e.target.value), warehouse_id: "", quantity_fulfilled: 1 }])} className="w-64"><option value="">Add allocation for line…</option>{physical.map((l) => <option key={l.id} value={l.id}>{l.description}</option>)}</Select>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

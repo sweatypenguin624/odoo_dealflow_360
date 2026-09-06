@@ -2,9 +2,15 @@ node_modules/
 __pycache__/
 *.pyc
 .env
+.env.local
 venv/
 .venv/
 dist/
 build/
 .next/
 .DS_Store
+*.db
+.pytest_cache/
+frontend/test-results/
+frontend/playwright-report/
+frontend/coverage/
