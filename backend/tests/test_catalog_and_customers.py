@@ -156,6 +156,20 @@ def test_customer_crud_search_and_ownership(as_admin, as_rep, as_rep2, as_custom
     assert as_customer.get("/customers").status_code == 403
 
 
+def test_customer_is_findable_by_its_portal_login(as_rep):
+    # "Cathy Customer" signs in to the portal for Test Corp, but she is nowhere
+    # on the customer record - its contact is "Pat Buyer". A rep who only knows
+    # the person they have been dealing with still has to find the account.
+    by_person = as_rep.get("/customers", params={"q": "Cathy Customer"})
+    assert [c["name"] for c in by_person.json()["items"]] == ["Test Corp"]
+    by_email = as_rep.get("/customers", params={"q": "customer@test.local"})
+    assert [c["name"] for c in by_email.json()["items"]] == ["Test Corp"]
+    # the same term resolves in global search
+    assert [c["name"] for c in as_rep.get("/search", params={"q": "Cathy"}).json()["customers"]] == ["Test Corp"]
+    # only portal logins count: a staff name must not drag in the accounts they own
+    assert as_rep.get("/customers", params={"q": "Rita Rep"}).json()["total"] == 0
+
+
 def test_tiers_categories_plans_pairings_admin(as_admin, as_rep):
     tiers = as_rep.get("/customer-tiers")
     assert tiers.status_code == 200 and len(tiers.json()) == 2

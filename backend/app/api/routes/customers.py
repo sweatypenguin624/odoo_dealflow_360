@@ -25,7 +25,7 @@ from app.models import (
     User,
 )
 from app.schemas.customers import CustomerCreate, CustomerDetailOut, CustomerHistoryOut, CustomerOut, CustomerUpdate
-from app.services import audit_service
+from app.services import audit_service, search_service
 from app.services.numbering import next_number
 
 router = APIRouter(prefix="/customers", tags=["customers"])
@@ -113,10 +113,7 @@ def list_customers(
 ):
     query = db.query(Customer).options(joinedload(Customer.tier), joinedload(Customer.owner))
     if q:
-        like = f"%{q.strip()}%"
-        query = query.filter(
-            or_(Customer.name.ilike(like), Customer.code.ilike(like), Customer.email.ilike(like), Customer.contact_name.ilike(like))
-        )
+        query = query.filter(search_service.customer_match(db, f"%{q.strip()}%"))
     if tier_id is not None:
         query = query.filter(Customer.tier_id == tier_id)
     if owner_user_id is not None:

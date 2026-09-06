@@ -9,6 +9,29 @@ from app.models import Customer, Invoice, Product, Quote, Subscription, Subscrip
 from app.services import quote_service
 
 
+def customer_match(db: Session, like: str):
+    """Predicate for "which customers does this term name?".
+
+    A customer's own fields are only half of its identity: the people who sign
+    in to the portal are User rows, and their names need not appear anywhere on
+    the account (the contact_name is whoever was on the paperwork). A rep who
+    has been dealing with "Hannah Park" has to be able to find her account, so
+    portal logins count as part of the customer's searchable identity.
+    """
+    portal_users = db.query(User.customer_id).filter(
+        User.role == Role.customer,
+        User.customer_id.isnot(None),
+        or_(User.full_name.ilike(like), User.email.ilike(like)),
+    )
+    return or_(
+        Customer.name.ilike(like),
+        Customer.code.ilike(like),
+        Customer.email.ilike(like),
+        Customer.contact_name.ilike(like),
+        Customer.id.in_(portal_users),
+    )
+
+
 def search(db: Session, user: User, q: str, limit: int = 5) -> dict:
     term = q.strip()
     if not term:
@@ -16,7 +39,7 @@ def search(db: Session, user: User, q: str, limit: int = 5) -> dict:
     like = f"%{term}%"
     customers = (
         db.query(Customer).options(joinedload(Customer.tier))
-        .filter(or_(Customer.name.ilike(like), Customer.code.ilike(like), Customer.email.ilike(like), Customer.contact_name.ilike(like)))
+        .filter(customer_match(db, like))
         .order_by(Customer.name).limit(limit).all()
     )
     quotes_q = quote_service.visible_quotes_query(db, user).join(Customer, Quote.customer_id == Customer.id)
